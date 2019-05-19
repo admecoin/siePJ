@@ -10,15 +10,16 @@
 
 /**
  * Name of client reported in the 'version' message. Report the same name
- * for both sierrad and sierra-qt, to make it harder for attackers to
+ * for both projectcoind and projectcoin-qt, to make it harder for attackers to
  * target servers or GUI users specifically.
  */
-const std::string CLIENT_NAME("Sierra Core");
+const std::string CLIENT_NAME("ProjectCoin Core");
 
 /**
  * Client version number
  */
 #define CLIENT_VERSION_SUFFIX ""
+
 
 /**
  * The following part of the code determines the CLIENT_BUILD variable.
@@ -42,10 +43,9 @@ const std::string CLIENT_NAME("Sierra Core");
 #endif
 
 //! git will put "#define GIT_ARCHIVE 1" on the next line inside archives.
-#define GIT_ARCHIVE 1
 #ifdef GIT_ARCHIVE
-#define GIT_COMMIT_ID "cbcb549"
-#define GIT_COMMIT_DATE "Tue, 29 Sept 2018 16:00:00 -0500"
+#define GIT_COMMIT_ID "62f4632"
+#define GIT_COMMIT_DATE "Tue Aug 21 16:21:20 2018 +0200"
 #endif
 
 #define BUILD_DESC_WITH_SUFFIX(maj, min, rev, build, suffix) \
@@ -91,8 +91,8 @@ std::string FormatFullVersion()
     return CLIENT_BUILD;
 }
 
-/** 
- * Format the subversion field according to BIP 14 spec (https://github.com/bitcoin/bips/blob/master/bip-0014.mediawiki) 
+/**
+ * Format the subversion field according to BIP 14 spec (https://github.com/bitcoin/bips/blob/master/bip-0014.mediawiki)
  */
 std::string FormatSubVersion(const std::string& name, int nClientVersion, const std::vector<std::string>& comments)
 {

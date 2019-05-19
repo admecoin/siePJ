@@ -1,4 +1,7 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -30,7 +33,7 @@ class QUrl;
 class QWidget;
 QT_END_NAMESPACE
 
-/** Utility functions used by the Sierra Qt UI.
+/** Utility functions used by the ProjectCoin Qt UI.
  */
 namespace GUIUtil
 {
@@ -38,14 +41,14 @@ namespace GUIUtil
 QString dateTimeStr(const QDateTime& datetime);
 QString dateTimeStr(qint64 nTime);
 
-// Render Sierra addresses in monospace font
+// Render ProjectCoin addresses in monospace font
 QFont bitcoinAddressFont();
 
 // Set up widgets for address and amounts
 void setupAddressWidget(QValidatedLineEdit* widget, QWidget* parent);
 void setupAmountWidget(QLineEdit* widget, QWidget* parent);
 
-// Parse "SIERRA:" URI into recipient object, return true on successful parsing
+// Parse "projectcoin:" URI into recipient object, return true on successful parsing
 bool parseBitcoinURI(const QUrl& uri, SendCoinsRecipient* out);
 bool parseBitcoinURI(QString uri, SendCoinsRecipient* out);
 QString formatBitcoinURI(const SendCoinsRecipient& info);
@@ -103,7 +106,7 @@ bool isObscured(QWidget* w);
 // Open debug.log
 void openDebugLogfile();
 
-// Open sierra.conf
+// Open projectcoin.conf
 void openConfigfile();
 
 // Open masternode.conf

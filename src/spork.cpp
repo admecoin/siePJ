@@ -1,11 +1,13 @@
-
-
+// Copyright (c) 2014-2016 The Dash developers
+// Copyright (c) 2016-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
+// Distributed under the MIT/X11 software license, see the accompanying
+// file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "spork.h"
 #include "base58.h"
 #include "key.h"
 #include "main.h"
-#include "masternode-budget.h"
 #include "net.h"
 #include "protocol.h"
 #include "sync.h"
@@ -26,7 +28,7 @@ std::map<int, CSporkMessage> mapSporksActive;
 
 void ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
-    if (fLiteMode) return; //disable all Darksend/masternode related functionality
+    if (fLiteMode) return; //disable all obfuscation/masternode related functionality
 
     if (strCommand == "spork") {
         //LogPrintf("ProcessSpork::spork\n");
@@ -49,9 +51,8 @@ void ProcessSpork(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
         LogPrintf("spork - new %s ID %d Time %d bestHeight %d\n", hash.ToString(), spork.nSporkID, spork.nValue, chainActive.Tip()->nHeight);
 
         if (!sporkManager.CheckSignature(spork)) {
-            // Temporary for key replacement
-            //LogPrintf("spork - invalid signature\n");
-            //Misbehaving(pfrom->GetId(), 100);
+            LogPrintf("spork - invalid signature\n");
+            Misbehaving(pfrom->GetId(), 100);
             return;
         }
 
@@ -80,19 +81,15 @@ bool IsSporkActive(int nSporkID)
     if (mapSporksActive.count(nSporkID)) {
         r = mapSporksActive[nSporkID].nValue;
     } else {
-        if (nSporkID == SPORK_2_INSTANTX) r = SPORK_2_INSTANTX_DEFAULT;
-        if (nSporkID == SPORK_3_INSTANTX_BLOCK_FILTERING) r = SPORK_3_INSTANTX_BLOCK_FILTERING_DEFAULT;
-        if (nSporkID == SPORK_5_MAX_VALUE) r = SPORK_5_MAX_VALUE_DEFAULT;
-        if (nSporkID == SPORK_7_MASTERNODE_SCANNING) r = SPORK_7_MASTERNODE_SCANNING_DEFAULT;
-        if (nSporkID == SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT) r = SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT;
-        if (nSporkID == SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT) r = SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT_DEFAULT;
-        if (nSporkID == SPORK_10_MASTERNODE_PAY_UPDATED_NODES) r = SPORK_10_MASTERNODE_PAY_UPDATED_NODES_DEFAULT;
-        if (nSporkID == SPORK_11_RESET_BUDGET) r = SPORK_11_RESET_BUDGET_DEFAULT;
-        if (nSporkID == SPORK_12_RECONSIDER_BLOCKS) r = SPORK_12_RECONSIDER_BLOCKS_DEFAULT;
-        if (nSporkID == SPORK_13_ENABLE_SUPERBLOCKS) r = SPORK_13_ENABLE_SUPERBLOCKS_DEFAULT;
-        if (nSporkID == SPORK_14_NEW_PROTOCOL_ENFORCEMENT) r = SPORK_14_NEW_PROTOCOL_ENFORCEMENT_DEFAULT;
-		if (nSporkID == SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2) r = SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2_DEFAULT;
-        if (nSporkID == SPORK_16_MN_WINNER_MINIMUM_AGE) r = SPORK_16_MN_WINNER_MINIMUM_AGE_DEFAULT;
+        if (nSporkID == SPORK_1_SWIFTTX) r = SPORK_1_SWIFTTX_DEFAULT;
+        if (nSporkID == SPORK_2_SWIFTTX_BLOCK_FILTERING) r = SPORK_2_SWIFTTX_BLOCK_FILTERING_DEFAULT;
+        if (nSporkID == SPORK_3_MAX_VALUE) r = SPORK_3_MAX_VALUE_DEFAULT;
+        if (nSporkID == SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT) r = SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT;
+        if (nSporkID == SPORK_5_RECONSIDER_BLOCKS) r = SPORK_5_RECONSIDER_BLOCKS_DEFAULT;
+        if (nSporkID == SPORK_6_MN_WINNER_MINIMUM_AGE) r = SPORK_6_MN_WINNER_MINIMUM_AGE_DEFAULT;
+        if (nSporkID == SPORK_7_MN_REBROADCAST_ENFORCEMENT) r = SPORK_7_MN_REBROADCAST_ENFORCEMENT_DEFAULT;
+        if (nSporkID == SPORK_8_BLOCK_PATCH_ENFORCEMENT) r = SPORK_8_BLOCK_PATCH_ENFORCEMENT_DEFAULT;
+        if (nSporkID == SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT) r = SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT_DEFAULT;
 
         if (r == -1) LogPrintf("GetSpork::Unknown Spork %d\n", nSporkID);
     }
@@ -109,19 +106,16 @@ int64_t GetSporkValue(int nSporkID)
     if (mapSporksActive.count(nSporkID)) {
         r = mapSporksActive[nSporkID].nValue;
     } else {
-        if (nSporkID == SPORK_2_INSTANTX) r = SPORK_2_INSTANTX_DEFAULT;
-        if (nSporkID == SPORK_3_INSTANTX_BLOCK_FILTERING) r = SPORK_3_INSTANTX_BLOCK_FILTERING_DEFAULT;
-        if (nSporkID == SPORK_5_MAX_VALUE) r = SPORK_5_MAX_VALUE_DEFAULT;
-        if (nSporkID == SPORK_7_MASTERNODE_SCANNING) r = SPORK_7_MASTERNODE_SCANNING_DEFAULT;
-        if (nSporkID == SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT) r = SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT;
-        if (nSporkID == SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT) r = SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT_DEFAULT;
-        if (nSporkID == SPORK_10_MASTERNODE_PAY_UPDATED_NODES) r = SPORK_10_MASTERNODE_PAY_UPDATED_NODES_DEFAULT;
-        if (nSporkID == SPORK_11_RESET_BUDGET) r = SPORK_11_RESET_BUDGET_DEFAULT;
-        if (nSporkID == SPORK_12_RECONSIDER_BLOCKS) r = SPORK_12_RECONSIDER_BLOCKS_DEFAULT;
-        if (nSporkID == SPORK_13_ENABLE_SUPERBLOCKS) r = SPORK_13_ENABLE_SUPERBLOCKS_DEFAULT;
-        if (nSporkID == SPORK_14_NEW_PROTOCOL_ENFORCEMENT) r = SPORK_14_NEW_PROTOCOL_ENFORCEMENT_DEFAULT;
-		if (nSporkID == SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2) r = SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2_DEFAULT;
-        if (nSporkID == SPORK_16_MN_WINNER_MINIMUM_AGE) r = SPORK_16_MN_WINNER_MINIMUM_AGE_DEFAULT;
+        if (nSporkID == SPORK_1_SWIFTTX) r = SPORK_1_SWIFTTX_DEFAULT;
+        if (nSporkID == SPORK_2_SWIFTTX_BLOCK_FILTERING) r = SPORK_2_SWIFTTX_BLOCK_FILTERING_DEFAULT;
+        if (nSporkID == SPORK_3_MAX_VALUE) r = SPORK_3_MAX_VALUE_DEFAULT;
+        if (nSporkID == SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT) r = SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT_DEFAULT;
+        if (nSporkID == SPORK_5_RECONSIDER_BLOCKS) r = SPORK_5_RECONSIDER_BLOCKS_DEFAULT;
+        if (nSporkID == SPORK_6_MN_WINNER_MINIMUM_AGE) r = SPORK_6_MN_WINNER_MINIMUM_AGE_DEFAULT;
+        if (nSporkID == SPORK_7_MN_REBROADCAST_ENFORCEMENT) r = SPORK_7_MN_REBROADCAST_ENFORCEMENT_DEFAULT;
+        if (nSporkID == SPORK_8_BLOCK_PATCH_ENFORCEMENT) r = SPORK_8_BLOCK_PATCH_ENFORCEMENT_DEFAULT;
+        if (nSporkID == SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT) r = SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT_DEFAULT;
+
 
         if (r == -1) LogPrintf("GetSpork::Unknown Spork %d\n", nSporkID);
     }
@@ -131,12 +125,8 @@ int64_t GetSporkValue(int nSporkID)
 
 void ExecuteSpork(int nSporkID, int nValue)
 {
-    if (nSporkID == SPORK_11_RESET_BUDGET && nValue == 1) {
-        budget.Clear();
-    }
-
     //correct fork via spork technology
-    if (nSporkID == SPORK_12_RECONSIDER_BLOCKS && nValue > 0) {
+    if (nSporkID == SPORK_5_RECONSIDER_BLOCKS && nValue > 0) {
         LogPrintf("Spork::ExecuteSpork -- Reconsider Last %d Blocks\n", nValue);
 
         ReprocessBlocks(nValue);
@@ -163,17 +153,15 @@ void ReprocessBlocks(int nBlocks)
         ++it;
     }
 
-    CValidationState state;
     {
         LOCK(cs_main);
         DisconnectBlocksAndReprocess(nBlocks);
     }
 
-    if (state.IsValid()) {
-        ActivateBestChain(state);
-    }
-}
+    CValidationState state;
 
+    ActivateBestChain(state);
+}
 
 bool CSporkManager::CheckSignature(CSporkMessage& spork)
 {
@@ -182,7 +170,7 @@ bool CSporkManager::CheckSignature(CSporkMessage& spork)
     CPubKey pubkey(ParseHex(Params().SporkKey()));
 
     std::string errorMessage = "";
-    if (!DarKsendSigner.VerifyMessage(pubkey, spork.vchSig, strMessage, errorMessage)) {
+    if (!obfuScationSigner.VerifyMessage(pubkey, spork.vchSig, strMessage, errorMessage)) {
         return false;
     }
 
@@ -197,17 +185,17 @@ bool CSporkManager::Sign(CSporkMessage& spork)
     CPubKey pubkey2;
     std::string errorMessage = "";
 
-    if (!DarKsendSigner.SetKey(strMasterPrivKey, errorMessage, key2, pubkey2)) {
+    if (!obfuScationSigner.SetKey(strMasterPrivKey, errorMessage, key2, pubkey2)) {
         LogPrintf("CMasternodePayments::Sign - ERROR: Invalid masternodeprivkey: '%s'\n", errorMessage);
         return false;
     }
 
-    if (!DarKsendSigner.SignMessage(strMessage, errorMessage, spork.vchSig, key2)) {
+    if (!obfuScationSigner.SignMessage(strMessage, errorMessage, spork.vchSig, key2)) {
         LogPrintf("CMasternodePayments::Sign - Sign message failed");
         return false;
     }
 
-    if (!DarKsendSigner.VerifyMessage(pubkey2, spork.vchSig, strMessage, errorMessage)) {
+    if (!obfuScationSigner.VerifyMessage(pubkey2, spork.vchSig, strMessage, errorMessage)) {
         LogPrintf("CMasternodePayments::Sign - Verify message failed");
         return false;
     }
@@ -257,38 +245,31 @@ bool CSporkManager::SetPrivKey(std::string strPrivKey)
 
 int CSporkManager::GetSporkIDByName(std::string strName)
 {
-    if (strName == "SPORK_2_INSTANTX") return SPORK_2_INSTANTX;
-    if (strName == "SPORK_3_INSTANTX_BLOCK_FILTERING") return SPORK_3_INSTANTX_BLOCK_FILTERING;
-    if (strName == "SPORK_5_MAX_VALUE") return SPORK_5_MAX_VALUE;
-    if (strName == "SPORK_7_MASTERNODE_SCANNING") return SPORK_7_MASTERNODE_SCANNING;
-    if (strName == "SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT") return SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT;
-    if (strName == "SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT") return SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT;
-    if (strName == "SPORK_10_MASTERNODE_PAY_UPDATED_NODES") return SPORK_10_MASTERNODE_PAY_UPDATED_NODES;
-    if (strName == "SPORK_11_RESET_BUDGET") return SPORK_11_RESET_BUDGET;
-    if (strName == "SPORK_12_RECONSIDER_BLOCKS") return SPORK_12_RECONSIDER_BLOCKS;
-    if (strName == "SPORK_13_ENABLE_SUPERBLOCKS") return SPORK_13_ENABLE_SUPERBLOCKS;
-    if (strName == "SPORK_14_NEW_PROTOCOL_ENFORCEMENT") return SPORK_14_NEW_PROTOCOL_ENFORCEMENT;
-	if (strName == "SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2") return SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2;
-    if (strName == "SPORK_16_MN_WINNER_MINIMUM_AGE") return SPORK_16_MN_WINNER_MINIMUM_AGE;
+    if (strName == "SPORK_1_SWIFTTX") return SPORK_1_SWIFTTX;
+    if (strName == "SPORK_2_SWIFTTX_BLOCK_FILTERING") return SPORK_2_SWIFTTX_BLOCK_FILTERING;
+    if (strName == "SPORK_3_MAX_VALUE") return SPORK_3_MAX_VALUE;
+    if (strName == "SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT") return SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT;
+    if (strName == "SPORK_5_RECONSIDER_BLOCKS") return SPORK_5_RECONSIDER_BLOCKS;
+    if (strName == "SPORK_6_MN_WINNER_MINIMUM_AGE") return SPORK_6_MN_WINNER_MINIMUM_AGE;
+    if (strName == "SPORK_7_MN_REBROADCAST_ENFORCEMENT") return SPORK_7_MN_REBROADCAST_ENFORCEMENT;
+    if (strName == "SPORK_8_BLOCK_PATCH_ENFORCEMENT") return SPORK_8_BLOCK_PATCH_ENFORCEMENT;
+    if (strName == "SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT") return SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT;
+
 
     return -1;
 }
 
 std::string CSporkManager::GetSporkNameByID(int id)
 {
-    if (id == SPORK_2_INSTANTX) return "SPORK_2_INSTANTX";
-    if (id == SPORK_3_INSTANTX_BLOCK_FILTERING) return "SPORK_3_INSTANTX_BLOCK_FILTERING";
-    if (id == SPORK_5_MAX_VALUE) return "SPORK_5_MAX_VALUE";
-    if (id == SPORK_7_MASTERNODE_SCANNING) return "SPORK_7_MASTERNODE_SCANNING";
-    if (id == SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT) return "SPORK_8_MASTERNODE_PAYMENT_ENFORCEMENT";
-    if (id == SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT) return "SPORK_9_MASTERNODE_BUDGET_ENFORCEMENT";
-    if (id == SPORK_10_MASTERNODE_PAY_UPDATED_NODES) return "SPORK_10_MASTERNODE_PAY_UPDATED_NODES";
-    if (id == SPORK_11_RESET_BUDGET) return "SPORK_11_RESET_BUDGET";
-    if (id == SPORK_12_RECONSIDER_BLOCKS) return "SPORK_12_RECONSIDER_BLOCKS";
-    if (id == SPORK_13_ENABLE_SUPERBLOCKS) return "SPORK_13_ENABLE_SUPERBLOCKS";
-    if (id == SPORK_14_NEW_PROTOCOL_ENFORCEMENT) return "SPORK_14_NEW_PROTOCOL_ENFORCEMENT";
-	if (id == SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2) return "SPORK_15_NEW_PROTOCOL_ENFORCEMENT_2";
-    if (id == SPORK_16_MN_WINNER_MINIMUM_AGE) return "SPORK_16_MN_WINNER_MINIMUM_AGE";
+    if (id == SPORK_1_SWIFTTX) return "SPORK_1_SWIFTTX";
+    if (id == SPORK_2_SWIFTTX_BLOCK_FILTERING) return "SPORK_2_SWIFTTX_BLOCK_FILTERING";
+    if (id == SPORK_3_MAX_VALUE) return "SPORK_3_MAX_VALUE";
+    if (id == SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT) return "SPORK_4_MASTERNODE_PAYMENT_ENFORCEMENT";
+    if (id == SPORK_5_RECONSIDER_BLOCKS) return "SPORK_5_RECONSIDER_BLOCKS";
+    if (id == SPORK_6_MN_WINNER_MINIMUM_AGE) return "SPORK_6_MN_WINNER_MINIMUM_AGE";
+    if (id == SPORK_7_MN_REBROADCAST_ENFORCEMENT) return "SPORK_7_MN_REBROADCAST_ENFORCEMENT";
+    if (id == SPORK_8_BLOCK_PATCH_ENFORCEMENT) return "SPORK_8_BLOCK_PATCH_ENFORCEMENT";
+    if (id == SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT) return "SPORK_9_ACCEPT_BLOCK_PATCH_ENFORCEMENT";
 
     return "Unknown";
 }

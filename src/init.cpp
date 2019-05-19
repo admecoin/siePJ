@@ -1,14 +1,13 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "init.h"
@@ -20,7 +19,6 @@
 #include "compat/sanity.h"
 #include "key.h"
 #include "main.h"
-#include "masternode-budget.h"
 #include "masternode-payments.h"
 #include "masternodeconfig.h"
 #include "masternodeman.h"
@@ -66,8 +64,9 @@ using namespace std;
 CWallet* pwalletMain = NULL;
 int nWalletBackups = 10;
 #endif
-bool fFeeEstimatesInitialized = false;
-bool fRestartRequested = false; // true: restart false: shutdown
+volatile bool fFeeEstimatesInitialized = false;
+volatile bool fRestartRequested = false; // true: restart false: shutdown
+extern std::list<uint256> listAccCheckpointsNoDB;
 
 #if ENABLE_ZMQ
 static CZMQNotificationInterface* pzmqNotificationInterface = NULL;
@@ -173,7 +172,7 @@ void PrepareShutdown()
     /// for example if the data directory was found to be locked.
     /// Be sure that anything that writes files or flushes caches only does this if the respective
     /// module was initialized.
-    RenameThread("sierra-shutoff");
+    RenameThread("projectcoin-shutoff");
     mempool.AddTransactionsUpdated(1);
     StopRPCThreads();
 #ifdef ENABLE_WALLET
@@ -183,8 +182,6 @@ void PrepareShutdown()
 #endif
     StopNode();
     DumpMasternodes();
-    DumpBudgets();
-    DumpMasternodePayments();
     UnregisterNodeSignals(GetNodeSignals());
 
     if (fFeeEstimatesInitialized) {
@@ -307,7 +304,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-blocknotify=<cmd>", _("Execute command when the best block changes (%s in cmd is replaced by block hash)"));
     strUsage += HelpMessageOpt("-checkblocks=<n>", strprintf(_("How many blocks to check at startup (default: %u, 0 = all)"), 500));
     strUsage += HelpMessageOpt("-checklevel=<n>", strprintf(_("How thorough the block verification of -checkblocks is (0-4, default: %u)"), 3));
-    strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), "sierra.conf"));
+    strUsage += HelpMessageOpt("-conf=<file>", strprintf(_("Specify configuration file (default: %s)"), "projectcoin.conf"));
     if (mode == HMM_BITCOIND) {
 #if !defined(WIN32)
         strUsage += HelpMessageOpt("-daemon", _("Run in the background as a daemon and accept commands"));
@@ -319,7 +316,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-maxorphantx=<n>", strprintf(_("Keep at most <n> unconnectable transactions in memory (default: %u)"), DEFAULT_MAX_ORPHAN_TRANSACTIONS));
     strUsage += HelpMessageOpt("-par=<n>", strprintf(_("Set the number of script verification threads (%u to %d, 0 = auto, <0 = leave that many cores free, default: %d)"), -(int)boost::thread::hardware_concurrency(), MAX_SCRIPTCHECK_THREADS, DEFAULT_SCRIPTCHECK_THREADS));
 #ifndef WIN32
-    strUsage += HelpMessageOpt("-pid=<file>", strprintf(_("Specify pid file (default: %s)"), "sierrad.pid"));
+    strUsage += HelpMessageOpt("-pid=<file>", strprintf(_("Specify pid file (default: %s)"), "projectcoind.pid"));
 #endif
     strUsage += HelpMessageOpt("-reindex", _("Rebuild block chain index from current blk000??.dat files") + " " + _("on startup"));
 #if !defined(WIN32)
@@ -346,8 +343,8 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-onion=<ip:port>", strprintf(_("Use separate SOCKS5 proxy to reach peers via Tor hidden services (default: %s)"), "-proxy"));
     strUsage += HelpMessageOpt("-onlynet=<net>", _("Only connect to nodes in network <net> (ipv4, ipv6 or onion)"));
     strUsage += HelpMessageOpt("-permitbaremultisig", strprintf(_("Relay non-P2SH multisig (default: %u)"), 1));
-    strUsage += HelpMessageOpt("-peerbloomfilters", strprintf(_("Support filtering of blocks and transaction with bloom filters (default: %u)"), false));
-    strUsage += HelpMessageOpt("-port=<port>", strprintf(_("Listen for connections on <port> (default: %u or testnet: %u)"), 13660, 23660));
+    strUsage += HelpMessageOpt("-peerbloomfilters", strprintf(_("Support filtering of blocks and transaction with bloom filters (default: %u)"), DEFAULT_PEERBLOOMFILTERS));
+    strUsage += HelpMessageOpt("-port=<port>", strprintf(_("Listen for connections on <port> (default: %u or testnet: %u)"), 11111, 11945));
     strUsage += HelpMessageOpt("-proxy=<ip:port>", _("Connect through SOCKS5 proxy"));
     strUsage += HelpMessageOpt("-seednode=<ip>", _("Connect to a node to retrieve peer addresses, and disconnect"));
     strUsage += HelpMessageOpt("-timeout=<n>", strprintf(_("Specify connection timeout in milliseconds (minimum: 1, default: %d)"), DEFAULT_CONNECT_TIMEOUT));
@@ -369,9 +366,9 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-disablewallet", _("Do not load the wallet and disable wallet RPC calls"));
     strUsage += HelpMessageOpt("-keypool=<n>", strprintf(_("Set key pool size to <n> (default: %u)"), 100));
     if (GetBoolArg("-help-debug", false))
-        strUsage += HelpMessageOpt("-mintxfee=<amt>", strprintf(_("Fees (in SIERRA/Kb) smaller than this are considered zero fee for transaction creation (default: %s)"),
+        strUsage += HelpMessageOpt("-mintxfee=<amt>", strprintf(_("Fees (in ProjectCoin/Kb) smaller than this are considered zero fee for transaction creation (default: %s)"),
             FormatMoney(CWallet::minTxFee.GetFeePerK())));
-    strUsage += HelpMessageOpt("-paytxfee=<amt>", strprintf(_("Fee (in SIERRA/kB) to add to transactions you send (default: %s)"), FormatMoney(payTxFee.GetFeePerK())));
+    strUsage += HelpMessageOpt("-paytxfee=<amt>", strprintf(_("Fee (in ProjectCoin/kB) to add to transactions you send (default: %s)"), FormatMoney(payTxFee.GetFeePerK())));
     strUsage += HelpMessageOpt("-rescan", _("Rescan the block chain for missing wallet transactions") + " " + _("on startup"));
     strUsage += HelpMessageOpt("-salvagewallet", _("Attempt to recover private keys from a corrupt wallet.dat") + " " + _("on startup"));
     strUsage += HelpMessageOpt("-sendfreetransactions", strprintf(_("Send transactions as zero-fee transactions if possible (default: %u)"), 0));
@@ -392,10 +389,10 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageGroup(_("ZeroMQ notification options:"));
     strUsage += HelpMessageOpt("-zmqpubhashblock=<address>", _("Enable publish hash block in <address>"));
     strUsage += HelpMessageOpt("-zmqpubhashtx=<address>", _("Enable publish hash transaction in <address>"));
-    strUsage += HelpMessageOpt("-zmqpubhashtxlock=<address>", _("Enable publish hash transaction (locked via InstantX) in <address>"));
+    strUsage += HelpMessageOpt("-zmqpubhashtxlock=<address>", _("Enable publish hash transaction (locked via SwiftX) in <address>"));
     strUsage += HelpMessageOpt("-zmqpubrawblock=<address>", _("Enable publish raw block in <address>"));
     strUsage += HelpMessageOpt("-zmqpubrawtx=<address>", _("Enable publish raw transaction in <address>"));
-    strUsage += HelpMessageOpt("-zmqpubrawtxlock=<address>", _("Enable publish raw transaction (locked via InstantX) in <address>"));
+    strUsage += HelpMessageOpt("-zmqpubrawtxlock=<address>", _("Enable publish raw transaction (locked via SwiftX) in <address>"));
 #endif
 
     strUsage += HelpMessageGroup(_("Debugging/Testing options:"));
@@ -412,7 +409,7 @@ std::string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-stopafterblockimport", strprintf(_("Stop running after importing blocks from disk (default: %u)"), 0));
         strUsage += HelpMessageOpt("-sporkkey=<privkey>", _("Enable spork administration functionality with the appropriate private key."));
     }
-    string debugCategories = "addrman, alert, bench, coindb, db, lock, rand, rpc, selectcoins, mempool, net, sierra, (Darksend, Instantx, masternode, mnpayments, mnbudget)"; // Don't translate these and qt below
+    string debugCategories = "addrman, alert, bench, coindb, db, lock, rand, rpc, selectcoins, mempool, net, proxy, projectcoin, (obfuscation, swiftx, masternode, mnpayments)"; // Don't translate these and qt below
     if (mode == HMM_BITCOIN_QT)
         debugCategories += ", qt";
     strUsage += HelpMessageOpt("-debug=<category>", strprintf(_("Output debugging information (default: %u, supplying <category> is optional)"), 0) + ". " +
@@ -431,7 +428,7 @@ std::string HelpMessage(HelpMessageMode mode)
         strUsage += HelpMessageOpt("-relaypriority", strprintf(_("Require high priority for relaying free or low-fee transactions (default:%u)"), 1));
         strUsage += HelpMessageOpt("-maxsigcachesize=<n>", strprintf(_("Limit size of signature cache to <n> entries (default: %u)"), 50000));
     }
-    strUsage += HelpMessageOpt("-minrelaytxfee=<amt>", strprintf(_("Fees (in SIERRA/Kb) smaller than this are considered zero fee for relaying (default: %s)"), FormatMoney(::minRelayTxFee.GetFeePerK())));
+    strUsage += HelpMessageOpt("-minrelaytxfee=<amt>", strprintf(_("Fees (in ProjectCoin/Kb) smaller than this are considered zero fee for relaying (default: %s)"), FormatMoney(::minRelayTxFee.GetFeePerK())));
     strUsage += HelpMessageOpt("-printtoconsole", strprintf(_("Send trace/debug info to console instead of debug.log file (default: %u)"), 0));
     if (GetBoolArg("-help-debug", false)) {
         strUsage += HelpMessageOpt("-printpriority", strprintf(_("Log transaction priority and fee per kB when mining blocks (default: %u)"), 0));
@@ -442,7 +439,7 @@ std::string HelpMessage(HelpMessageMode mode)
     }
     strUsage += HelpMessageOpt("-shrinkdebugfile", _("Shrink debug.log file on client startup (default: 1 when no -debug)"));
     strUsage += HelpMessageOpt("-testnet", _("Use the test network"));
-    strUsage += HelpMessageOpt("-litemode=<n>", strprintf(_("Disable all Sierra specific functionality (Masternodes, Darksend, InstantX, Budgeting) (0-1, default: %u)"), 0));
+    strUsage += HelpMessageOpt("-litemode=<n>", strprintf(_("Disable all ProjectCoin specific functionality (Masternodes, Obfuscation, SwiftX) (0-1, default: %u)"), 0));
 
 #ifdef ENABLE_WALLET
     strUsage += HelpMessageGroup(_("Staking options:"));
@@ -459,18 +456,17 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-mnconf=<file>", strprintf(_("Specify masternode configuration file (default: %s)"), "masternode.conf"));
     strUsage += HelpMessageOpt("-mnconflock=<n>", strprintf(_("Lock masternodes from masternode configuration file (default: %u)"), 1));
     strUsage += HelpMessageOpt("-masternodeprivkey=<n>", _("Set the masternode private key"));
-    strUsage += HelpMessageOpt("-masternodeaddr=<n>", strprintf(_("Set external address:port to get to this masternode (example: %s)"), "128.127.106.235:13660"));
-    strUsage += HelpMessageOpt("-budgetvotemode=<mode>", _("Change automatic finalized budget voting behavior. mode=auto: Vote for only exact finalized budget match to my generated budget. (string, default: auto)"));
+    strUsage += HelpMessageOpt("-masternodeaddr=<n>", strprintf(_("Set external address:port to get to this masternode (example: %s)"), "128.127.106.235:11111"));
 
-    strUsage += HelpMessageGroup(_("Darksend options:"));
-    strUsage += HelpMessageOpt("-enableDarksend=<n>", strprintf(_("Enable use of automated Darksend for funds stored in this wallet (0-1, default: %u)"), 0));
-    strUsage += HelpMessageOpt("-Darksendrounds=<n>", strprintf(_("Use N separate masternodes to anonymize funds  (2-8, default: %u)"), 2));
-    strUsage += HelpMessageOpt("-anonymizeamount=<n>", strprintf(_("Keep N SIERRA anonymized (default: %u)"), 0));
-    strUsage += HelpMessageOpt("-liquidityprovider=<n>", strprintf(_("Provide liquidity to Darksend by infrequently mixing coins on a continual basis (0-100, default: %u, 1=very frequent, high fees, 100=very infrequent, low fees)"), 0));
+    strUsage += HelpMessageGroup(_("Obfuscation options:"));
+    strUsage += HelpMessageOpt("-enableobfuscation=<n>", strprintf(_("Enable use of automated obfuscation for funds stored in this wallet (0-1, default: %u)"), 0));
+    strUsage += HelpMessageOpt("-obfuscationrounds=<n>", strprintf(_("Use N separate masternodes to anonymize funds  (2-8, default: %u)"), 2));
+    strUsage += HelpMessageOpt("-anonymizeprojectcoinamount=<n>", strprintf(_("Keep N ProjectCoin anonymized (default: %u)"), 0));
+    strUsage += HelpMessageOpt("-liquidityprovider=<n>", strprintf(_("Provide liquidity to Obfuscation by infrequently mixing coins on a continual basis (0-100, default: %u, 1=very frequent, high fees, 100=very infrequent, low fees)"), 0));
 
-    strUsage += HelpMessageGroup(_("InstantX options:"));
-    strUsage += HelpMessageOpt("-enableInstantx=<n>", strprintf(_("Enable Instantx, show confirmations for locked transactions (bool, default: %s)"), "true"));
-    strUsage += HelpMessageOpt("-Instantxdepth=<n>", strprintf(_("Show N confirmations for a successfully locked transaction (0-9999, default: %u)"), nInstantXDepth));
+    strUsage += HelpMessageGroup(_("SwiftX options:"));
+    strUsage += HelpMessageOpt("-enableswifttx=<n>", strprintf(_("Enable SwiftX, show confirmations for locked transactions (bool, default: %s)"), "true"));
+    strUsage += HelpMessageOpt("-swifttxdepth=<n>", strprintf(_("Show N confirmations for a successfully locked transaction (0-9999, default: %u)"), nSwiftTXDepth));
 
     strUsage += HelpMessageGroup(_("Node relay options:"));
     strUsage += HelpMessageOpt("-datacarrier", strprintf(_("Relay and mine data carrier transactions (default: %u)"), 1));
@@ -490,7 +486,7 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-rpcbind=<addr>", _("Bind to given address to listen for JSON-RPC connections. Use [host]:port notation for IPv6. This option can be specified multiple times (default: bind to all interfaces)"));
     strUsage += HelpMessageOpt("-rpcuser=<user>", _("Username for JSON-RPC connections"));
     strUsage += HelpMessageOpt("-rpcpassword=<pw>", _("Password for JSON-RPC connections"));
-    strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(_("Listen for JSON-RPC connections on <port> (default: %u)"), 13661));
+    strUsage += HelpMessageOpt("-rpcport=<port>", strprintf(_("Listen for JSON-RPC connections on <port> (default: %u or testnet: %u)"), 9998, 11944));
     strUsage += HelpMessageOpt("-rpcallowip=<ip>", _("Allow JSON-RPC connections from specified source. Valid for <ip> are a single IP (e.g. 1.2.3.4), a network/netmask (e.g. 1.2.3.4/255.255.255.0) or a network/CIDR (e.g. 1.2.3.4/24). This option can be specified multiple times"));
     strUsage += HelpMessageOpt("-rpcthreads=<n>", strprintf(_("Set the number of threads to service RPC calls (default: %d)"), 4));
     strUsage += HelpMessageOpt("-rpckeepalive", strprintf(_("RPC support for HTTP persistent connections (default: %d)"), 1));
@@ -501,18 +497,25 @@ std::string HelpMessage(HelpMessageMode mode)
     strUsage += HelpMessageOpt("-rpcsslprivatekeyfile=<file.pem>", strprintf(_("Server private key (default: %s)"), "server.pem"));
     strUsage += HelpMessageOpt("-rpcsslciphers=<ciphers>", strprintf(_("Acceptable ciphers (default: %s)"), "TLSv1.2+HIGH:TLSv1+HIGH:!SSLv2:!aNULL:!eNULL:!3DES:@STRENGTH"));
 
+
+    strUsage += HelpMessageOpt("-blockspamfilter=<n>", strprintf(_("Use block spam filter (default: %u)"), DEFAULT_BLOCK_SPAM_FILTER));
+    strUsage += HelpMessageOpt("-blockspamfiltermaxsize=<n>", strprintf(_("Maximum size of the list of indexes in the block spam filter (default: %u)"), DEFAULT_BLOCK_SPAM_FILTER_MAX_SIZE));
+    strUsage += HelpMessageOpt("-blockspamfiltermaxavg=<n>", strprintf(_("Maximum average size of an index occurrence in the block spam filter (default: %u)"), DEFAULT_BLOCK_SPAM_FILTER_MAX_AVG));
+
     return strUsage;
 }
 
 std::string LicenseInfo()
 {
-    return FormatParagraph(strprintf(_("Copyright (C) 2009-%i The Bitcoin Core Developers"), COPYRIGHT_YEAR)) + "\n" +
-            "\n" +
-           FormatParagraph(strprintf(_("Copyright (C) 2014-%i The Dash and PIVX Core Developers"), COPYRIGHT_YEAR)) + "\n" +
+    return FormatParagraph(_("Copyright (C) 2009-2014 The Bitcoin Core Developers")) + "\n" +
            "\n" +
-           FormatParagraph(strprintf(_("Copyright (C) 2015-%i The ALQO Core Developers"), COPYRIGHT_YEAR)) + "\n" +
+           FormatParagraph(_("Copyright (C) 2014-2015 The Dash Core Developers")) + "\n" +
            "\n" +
-           FormatParagraph(strprintf(_("Copyright (C) 2017-%i The Sierra Core Developers"), COPYRIGHT_YEAR)) + "\n" +
+           FormatParagraph(_("Copyright (C) 2015-2017 The PIVX Core Developers")) + "\n" +
+           "\n" +
+           FormatParagraph(_("Copyright (C) 2017-2018 The XDNA Core Developers")) + "\n" +
+           "\n" +
+           FormatParagraph(_("Copyright (C) 2018-2019 The ProjectCoin Core Developers")) + "\n" +
            "\n" +
            FormatParagraph(_("This is experimental software.")) + "\n" +
            "\n" +
@@ -546,7 +549,7 @@ struct CImportingNow {
 
 void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 {
-    RenameThread("sierra-loadblk");
+    RenameThread("projectcoin-loadblk");
 
     // -reindex
     if (fReindex) {
@@ -604,7 +607,7 @@ void ThreadImport(std::vector<boost::filesystem::path> vImportFiles)
 }
 
 /** Sanity checks
- *  Ensure that Sierra is running in a usable environment with all
+ *  Ensure that ProjectCoin is running in a usable environment with all
  *  necessary library support.
  */
 bool InitSanityCheck(void)
@@ -621,7 +624,7 @@ bool InitSanityCheck(void)
 }
 
 
-/** Initialize Sierra.
+/** Initialize ProjectCoin.
  *  @pre Parameters should be parsed and config file should be read.
  */
 bool AppInit2(boost::thread_group& threadGroup)
@@ -749,9 +752,9 @@ bool AppInit2(boost::thread_group& threadGroup)
             LogPrintf("AppInit2 : parameter interaction: -zapwallettxes=<mode> -> setting -rescan=1\n");
     }
 
-    if (!GetBoolArg("-enableInstantx", fEnableInstantX)) {
-        if (SoftSetArg("-Instantxdepth", 0))
-            LogPrintf("AppInit2 : parameter interaction: -enableInstantx=false -> setting -nInstantXDepth=0\n");
+    if (!GetBoolArg("-enableswifttx", fEnableSwiftTX)) {
+        if (SoftSetArg("-swifttxdepth", 0))
+            LogPrintf("AppInit2 : parameter interaction: -enableswifttx=false -> setting -nSwiftTXDepth=0\n");
     }
 
     if (mapArgs.count("-reservebalance")) {
@@ -890,7 +893,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // Sanity check
     if (!InitSanityCheck())
-        return InitError(_("Initialization sanity check failed. Sierra Core is shutting down."));
+        return InitError(_("Initialization sanity check failed. ProjectCoin Core is shutting down."));
 
     std::string strDataDir = GetDataDir().string();
 #ifdef ENABLE_WALLET
@@ -898,7 +901,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (strWalletFile != boost::filesystem::basename(strWalletFile) + boost::filesystem::extension(strWalletFile))
         return InitError(strprintf(_("Wallet %s resides outside data directory %s"), strWalletFile, strDataDir));
 #endif
-    // Make sure only a single Sierra process is using the data directory.
+    // Make sure only a single ProjectCoin process is using the data directory.
     boost::filesystem::path pathLockFile = GetDataDir() / ".lock";
     FILE* file = fopen(pathLockFile.string().c_str(), "a"); // empty lock file; created if it doesn't exist.
     if (file) fclose(file);
@@ -906,7 +909,7 @@ bool AppInit2(boost::thread_group& threadGroup)
 
     // Wait maximum 10 seconds if an old wallet is still running. Avoids lockup during restart
     if (!lock.timed_lock(boost::get_system_time() + boost::posix_time::seconds(10)))
-        return InitError(strprintf(_("Cannot obtain a lock on data directory %s. Sierra Core is probably already running."), strDataDir));
+        return InitError(strprintf(_("Cannot obtain a lock on data directory %s. ProjectCoin Core is probably already running."), strDataDir));
 
 #ifndef WIN32
     CreatePidFile(GetPidFile(), getpid());
@@ -914,7 +917,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     if (GetBoolArg("-shrinkdebugfile", !fDebug))
         ShrinkDebugFile();
     LogPrintf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
-    LogPrintf("Sierra version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
+    LogPrintf("ProjectCoin version %s (%s)\n", FormatFullVersion(), CLIENT_DATE);
     LogPrintf("Using OpenSSL version %s\n", SSLeay_version(SSLEAY_VERSION));
 #ifdef ENABLE_WALLET
     LogPrintf("Using BerkeleyDB version %s\n", DbEnv::version(0, 0, 0));
@@ -1094,31 +1097,48 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
     }
 
-    CService addrProxy;
-    bool fProxy = false;
-    if (mapArgs.count("-proxy")) {
-        addrProxy = CService(mapArgs["-proxy"], 9050);
+    // Check for host lookup allowed before parsing any network related parameters
+    fNameLookup = GetBoolArg("-dns", DEFAULT_NAME_LOOKUP);
+
+    bool proxyRandomize = GetBoolArg("-proxyrandomize", true);
+    // -proxy sets a proxy for all outgoing network traffic
+    // -noproxy (or -proxy=0) as well as the empty string can be used to not set a proxy, this is the default
+    std::string proxyArg = GetArg("-proxy", "");
+    if (proxyArg != "" && proxyArg != "0") {
+        CService proxyAddr;
+        if (!Lookup(proxyArg.c_str(), proxyAddr, 9050, fNameLookup)) {
+            return InitError(strprintf(_("Invalid -proxy address or hostname: '%s'"), proxyArg));
+        }
+
+        proxyType addrProxy = proxyType(proxyAddr, proxyRandomize);
         if (!addrProxy.IsValid())
-            return InitError(strprintf(_("Invalid -proxy address: '%s'"), mapArgs["-proxy"]));
+            return InitError(strprintf(_("Invalid -proxy address or hostname: '%s'"), proxyArg));
 
         SetProxy(NET_IPV4, addrProxy);
         SetProxy(NET_IPV6, addrProxy);
+        SetProxy(NET_TOR, addrProxy);
         SetNameProxy(addrProxy);
-        fProxy = true;
+        SetReachable(NET_TOR); // by default, -proxy sets onion as reachable, unless -noonion later
     }
 
-    // -onion can override normal proxy, -noonion disables tor entirely
-    if (!(mapArgs.count("-onion") && mapArgs["-onion"] == "0") &&
-        (fProxy || mapArgs.count("-onion"))) {
-        CService addrOnion;
-        if (!mapArgs.count("-onion"))
-            addrOnion = addrProxy;
-        else
-            addrOnion = CService(mapArgs["-onion"], 9050);
-        if (!addrOnion.IsValid())
-            return InitError(strprintf(_("Invalid -onion address: '%s'"), mapArgs["-onion"]));
-        SetProxy(NET_TOR, addrOnion);
-        SetReachable(NET_TOR);
+    // -onion can be used to set only a proxy for .onion, or override normal proxy for .onion addresses
+    // -noonion (or -onion=0) disables connecting to .onion entirely
+    // An empty string is used to not override the onion proxy (in which case it defaults to -proxy set above, or none)
+    std::string onionArg = GetArg("-onion", "");
+    if (onionArg != "") {
+        if (onionArg == "0") { // Handle -noonion/-onion=0
+            SetReachable(NET_TOR, false); // set onions as unreachable
+        } else {
+            CService onionProxy;
+            if (!Lookup(onionArg.c_str(), onionProxy, 9050, fNameLookup)) {
+                return InitError(strprintf(_("Invalid -onion address or hostname: '%s'"), onionArg));
+            }
+            proxyType addrOnion = proxyType(onionProxy, proxyRandomize);
+            if (!addrOnion.IsValid())
+                return InitError(strprintf(_("Invalid -onion address or hostname: '%s'"), onionArg));
+            SetProxy(NET_TOR, addrOnion);
+            SetReachable(NET_TOR);
+        }
     }
 
     // see Step 2: parameter interactions for more information about these
@@ -1240,8 +1260,11 @@ bool AppInit2(boost::thread_group& threadGroup)
                 if (fReindex)
                     pblocktree->WriteReindexing(true);
 
-                if (!LoadBlockIndex()) {
+                uiInterface.InitMessage(_("Loading block index..."));
+                string strBlockIndexError = "";
+                if (!LoadBlockIndex(strBlockIndexError)) {
                     strLoadError = _("Error loading block database");
+                    strLoadError = strprintf("%s : %s", strLoadError, strBlockIndexError);
                     break;
                 }
 
@@ -1263,7 +1286,7 @@ bool AppInit2(boost::thread_group& threadGroup)
                 }
 
                 uiInterface.InitMessage(_("Verifying blocks..."));
-                if (!CVerifyDB().VerifyDB(pcoinsdbview, GetArg("-checklevel", 3),
+                if (!CVerifyDB().VerifyDB(pcoinsdbview, GetArg("-checklevel", 4),
                         GetArg("-checkblocks", 500))) {
                     strLoadError = _("Corrupted block database detected");
                     break;
@@ -1349,9 +1372,9 @@ bool AppInit2(boost::thread_group& threadGroup)
                              " or address book entries might be missing or incorrect."));
                 InitWarning(msg);
             } else if (nLoadWalletRet == DB_TOO_NEW)
-                strErrors << _("Error loading wallet.dat: Wallet requires newer version of Sierra Core") << "\n";
+                strErrors << _("Error loading wallet.dat: Wallet requires newer version of ProjectCoin Core") << "\n";
             else if (nLoadWalletRet == DB_NEED_REWRITE) {
-                strErrors << _("Wallet needed to be rewritten: restart Sierra Core to complete") << "\n";
+                strErrors << _("Wallet needed to be rewritten: restart ProjectCoin Core to complete") << "\n";
                 LogPrintf("%s", strErrors.str());
                 return InitError(strErrors.str());
             } else
@@ -1457,7 +1480,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             MilliSleep(10);
     }
 
-    // ********************************************************* Step 10: setup DarKsend
+    // ********************************************************* Step 10: setup ObfuScation
 
     uiInterface.InitMessage(_("Loading masternode cache..."));
 
@@ -1473,41 +1496,6 @@ bool AppInit2(boost::thread_group& threadGroup)
             LogPrintf("file format is unknown or invalid, please fix it manually\n");
     }
 
-    uiInterface.InitMessage(_("Loading budget cache..."));
-
-    CBudgetDB budgetdb;
-    CBudgetDB::ReadResult readResult2 = budgetdb.Read(budget);
-
-    if (readResult2 == CBudgetDB::FileError)
-        LogPrintf("Missing budget cache - budget.dat, will try to recreate\n");
-    else if (readResult2 != CBudgetDB::Ok) {
-        LogPrintf("Error reading budget.dat: ");
-        if (readResult2 == CBudgetDB::IncorrectFormat)
-            LogPrintf("magic is ok but data has invalid format, will try to recreate\n");
-        else
-            LogPrintf("file format is unknown or invalid, please fix it manually\n");
-    }
-
-    //flag our cached items so we send them to our peers
-    budget.ResetSync();
-    budget.ClearSeen();
-
-
-    uiInterface.InitMessage(_("Loading masternode payment cache..."));
-
-    CMasternodePaymentDB mnpayments;
-    CMasternodePaymentDB::ReadResult readResult3 = mnpayments.Read(masternodePayments);
-
-    if (readResult3 == CMasternodePaymentDB::FileError)
-        LogPrintf("Missing masternode payment cache - mnpayments.dat, will try to recreate\n");
-    else if (readResult3 != CMasternodePaymentDB::Ok) {
-        LogPrintf("Error reading mnpayments.dat: ");
-        if (readResult3 == CMasternodePaymentDB::IncorrectFormat)
-            LogPrintf("magic is ok but data has invalid format, will try to recreate\n");
-        else
-            LogPrintf("file format is unknown or invalid, please fix it manually\n");
-    }
-
     fMasterNode = GetBoolArg("-masternode", false);
 
     if ((fMasterNode || masternodeConfig.getCount() > -1) && fTxIndex == false) {
@@ -1516,7 +1504,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     }
 
     if (fMasterNode) {
-        LogPrintf("IS DARKSEND MASTER NODE\n");
+        LogPrintf("IS OBFUSCATION MASTER NODE\n");
         strMasterNodeAddr = GetArg("-masternodeaddr", "");
 
         LogPrintf(" addr %s\n", strMasterNodeAddr.c_str());
@@ -1535,7 +1523,7 @@ bool AppInit2(boost::thread_group& threadGroup)
             CKey key;
             CPubKey pubkey;
 
-            if (!DarKsendSigner.SetKey(strMasterNodePrivKey, errorMessage, key, pubkey)) {
+            if (!obfuScationSigner.SetKey(strMasterNodePrivKey, errorMessage, key, pubkey)) {
                 return InitError(_("Invalid masternodeprivkey. Please see documenation."));
             }
 
@@ -1545,9 +1533,6 @@ bool AppInit2(boost::thread_group& threadGroup)
             return InitError(_("You must specify a masternodeprivkey in the configuration. Please see documentation for help."));
         }
     }
-
-    //get the mode of budget voting for this masternode
-    strBudgetMode = GetArg("-budgetvotemode", "auto");
 
     if (GetBoolArg("-mnconflock", true) && pwalletMain) {
         LOCK(pwalletMain->cs_wallet);
@@ -1561,62 +1546,61 @@ bool AppInit2(boost::thread_group& threadGroup)
         }
     }
 
-    fEnableDarksend = GetBoolArg("-enableDarksend", false);
+    fEnableObfuscation = GetBoolArg("-enableobfuscation", false);
 
-    nDarksendRounds = GetArg("-Darksendrounds", 2);
-    if (nDarksendRounds > 16) nDarksendRounds = 16;
-    if (nDarksendRounds < 1) nDarksendRounds = 1;
+    nObfuscationRounds = GetArg("-obfuscationrounds", 2);
+    if (nObfuscationRounds > 16) nObfuscationRounds = 16;
+    if (nObfuscationRounds < 1) nObfuscationRounds = 1;
 
     nLiquidityProvider = GetArg("-liquidityprovider", 0); //0-100
     if (nLiquidityProvider != 0) {
-        DarKsendPool.SetMinBlockSpacing(std::min(nLiquidityProvider, 100) * 15);
-        fEnableDarksend = true;
-        nDarksendRounds = 99999;
+        obfuScationPool.SetMinBlockSpacing(std::min(nLiquidityProvider, 100) * 15);
+        fEnableObfuscation = true;
+        nObfuscationRounds = 99999;
     }
 
-    nAnonymizeAmount = GetArg("-anonymizeamount", 0);
-    if (nAnonymizeAmount > 999999) nAnonymizeAmount = 999999;
-    if (nAnonymizeAmount < 2) nAnonymizeAmount = 2;
+    nAnonymizePrjAmount = GetArg("-anonymizeprojectcoinamount", 0);
+    if (nAnonymizePrjAmount > 999999) nAnonymizePrjAmount = 999999;
+    if (nAnonymizePrjAmount < 2) nAnonymizePrjAmount = 2;
 
-    fEnableInstantX = GetBoolArg("-enableInstantx", fEnableInstantX);
-    nInstantXDepth = GetArg("-Instantxdepth", nInstantXDepth);
-    nInstantXDepth = std::min(std::max(nInstantXDepth, 0), 60);
+    fEnableSwiftTX = GetBoolArg("-enableswifttx", fEnableSwiftTX);
+    nSwiftTXDepth = GetArg("-swifttxdepth", nSwiftTXDepth);
+    nSwiftTXDepth = std::min(std::max(nSwiftTXDepth, 0), 60);
 
-    //lite mode disables all Masternode and Darksend related functionality
+    //lite mode disables all Masternode and Obfuscation related functionality
     fLiteMode = GetBoolArg("-litemode", false);
     if (fMasterNode && fLiteMode) {
         return InitError("You can not start a masternode in litemode");
     }
 
     LogPrintf("fLiteMode %d\n", fLiteMode);
-    LogPrintf("nInstantXDepth %d\n", nInstantXDepth);
-    LogPrintf("Darksend rounds %d\n", nDarksendRounds);
-    LogPrintf("Anonymize Amount %d\n", nAnonymizeAmount);
-    LogPrintf("Budget Mode %s\n", strBudgetMode.c_str());
+    LogPrintf("nSwiftTXDepth %d\n", nSwiftTXDepth);
+    LogPrintf("Obfuscation rounds %d\n", nObfuscationRounds);
+    LogPrintf("Anonymize ProjectCoin Amount %d\n", nAnonymizePrjAmount);
 
     /* Denominations
 
-       A note about convertability. Within Darksend pools, each denomination
+       A note about convertability. Within Obfuscation pools, each denomination
        is convertable to another.
 
        For example:
-       1 SIERRA + 1000 == (.1 SIERRA + 100) * 10
-       10 SIERRA + 10000 == (1 SIERRA + 1000) * 10
+       1ProjectCoin+1000 == (.1ProjectCoin+100)*10
+       10ProjectCoin+10000 == (1ProjectCoin+1000)*10
     */
-    DarKsendDenominations.push_back((10000 * COIN) + 10000000);
-    DarKsendDenominations.push_back((1000 * COIN) + 1000000);
-    DarKsendDenominations.push_back((100 * COIN) + 100000);
-    DarKsendDenominations.push_back((10 * COIN) + 10000);
-    DarKsendDenominations.push_back((1 * COIN) + 1000);
-    DarKsendDenominations.push_back((.1 * COIN) + 100);
+    obfuScationDenominations.push_back((10000 * COIN) + 10000000);
+    obfuScationDenominations.push_back((1000 * COIN) + 1000000);
+    obfuScationDenominations.push_back((100 * COIN) + 100000);
+    obfuScationDenominations.push_back((10 * COIN) + 10000);
+    obfuScationDenominations.push_back((1 * COIN) + 1000);
+    obfuScationDenominations.push_back((.1 * COIN) + 100);
     /* Disabled till we need them
-    DarKsendDenominations.push_back( (.01      * COIN)+10 );
-    DarKsendDenominations.push_back( (.001     * COIN)+1 );
+    obfuScationDenominations.push_back( (.01      * COIN)+10 );
+    obfuScationDenominations.push_back( (.001     * COIN)+1 );
     */
 
-    DarKsendPool.InitCollateralAddress();
+    obfuScationPool.InitCollateralAddress();
 
-    threadGroup.create_thread(boost::bind(&ThreadCheckDarKsendPool));
+    threadGroup.create_thread(boost::bind(&ThreadCheckObfuScationPool));
 
     // ********************************************************* Step 11: start node
 

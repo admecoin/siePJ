@@ -1,8 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -38,6 +37,7 @@ WalletModel::WalletModel(CWallet* wallet, OptionsModel* optionsModel, QObject* p
                                                                                          cachedNumBlocks(0)
 {
     fHaveWatchOnly = wallet->HaveWatchOnly();
+    fHaveMultiSig = wallet->HaveMultiSig();
     fForceCheckBalanceChanged = false;
 
     addressTableModel = new AddressTableModel(wallet, this);
@@ -129,15 +129,12 @@ void WalletModel::pollBalanceChanged()
     if (!lockWallet)
         return;
 
-    // Removing Darksend - BJK
-    // if (fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || nDarksendRounds != cachedDarksendRounds || cachedTxLocks != nCompleteTXLocks) {
-    if (fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || cachedTxLocks != nCompleteTXLocks) {
+    if (fForceCheckBalanceChanged || chainActive.Height() != cachedNumBlocks || nObfuscationRounds != cachedObfuscationRounds || cachedTxLocks != nCompleteTXLocks) {
         fForceCheckBalanceChanged = false;
 
         // Balance and number of transactions might have changed
         cachedNumBlocks = chainActive.Height();
-        // Removing Darksend - BJK
-        // cachedDarksendRounds = nDarksendRounds;
+        cachedObfuscationRounds = nObfuscationRounds;
 
         checkBalanceChanged();
         if (transactionTableModel) {
@@ -198,10 +195,30 @@ void WalletModel::updateWatchOnlyFlag(bool fHaveWatchonly)
     emit notifyWatchonlyChanged(fHaveWatchonly);
 }
 
+void WalletModel::updateMultiSigFlag(bool fHaveMultiSig)
+{
+    this->fHaveMultiSig = fHaveMultiSig;
+    emit notifyMultiSigChanged(fHaveMultiSig);
+}
+
 bool WalletModel::validateAddress(const QString& address)
 {
     CBitcoinAddress addressParsed(address.toStdString());
     return addressParsed.IsValid();
+}
+
+void WalletModel::updateAddressBookLabels(const CTxDestination& dest, const string& strName, const string& strPurpose)
+{
+    LOCK(wallet->cs_wallet);
+
+    std::map<CTxDestination, CAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
+
+    // Check if we have a new address or an updated label
+    if (mi == wallet->mapAddressBook.end()) {
+        wallet->SetAddressBook(dest, strName, strPurpose);
+    } else if (mi->second.name != strName) {
+        wallet->SetAddressBook(dest, strName, ""); // "" means don't change purpose
+    }
 }
 
 WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransaction& transaction, const CCoinControl* coinControl)
@@ -238,7 +255,7 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
                 return InvalidAmount;
             }
             total += subtotal;
-        } else { // User-entered Sierra address / amount:
+        } else { // User-entered projectcoin address / amount:
             if (!validateAddress(rcp.address)) {
                 return InvalidAddress;
             }
@@ -275,17 +292,17 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
         CReserveKey* keyChange = transaction.getPossibleKeyChange();
 
 
-        if (recipients[0].useInstantX && total > GetSporkValue(SPORK_5_MAX_VALUE) * COIN) {
-            emit message(tr("Send Coins"), tr("InstantX doesn't support sending values that high yet. Transactions are currently limited to %1 SIERRA.").arg(GetSporkValue(SPORK_5_MAX_VALUE)),
+        if (recipients[0].useSwiftTX && total > GetSporkValue(SPORK_3_MAX_VALUE) * COIN) {
+            emit message(tr("Send Coins"), tr("SwiftX doesn't support sending values that high yet. Transactions are currently limited to %1 ProjectCoin.").arg(GetSporkValue(SPORK_3_MAX_VALUE)),
                 CClientUIInterface::MSG_ERROR);
             return TransactionCreationFailed;
         }
 
-        bool fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, strFailReason, coinControl, recipients[0].inputType, recipients[0].useInstantX);
+        bool fCreated = wallet->CreateTransaction(vecSend, *newTx, *keyChange, nFeeRequired, strFailReason, coinControl, recipients[0].inputType, recipients[0].useSwiftTX);
         transaction.setTransactionFee(nFeeRequired);
 
-        if (recipients[0].useInstantX && newTx->GetValueOut() > GetSporkValue(SPORK_5_MAX_VALUE) * COIN) {
-            emit message(tr("Send Coins"), tr("InstantX doesn't support sending values that high yet. Transactions are currently limited to %1 SIERRA.").arg(GetSporkValue(SPORK_5_MAX_VALUE)),
+        if (recipients[0].useSwiftTX && newTx->GetValueOut() > GetSporkValue(SPORK_3_MAX_VALUE) * COIN) {
+            emit message(tr("Send Coins"), tr("SwiftX doesn't support sending values that high yet. Transactions are currently limited to %1 ProjectCoin.").arg(GetSporkValue(SPORK_3_MAX_VALUE)),
                 CClientUIInterface::MSG_ERROR);
             return TransactionCreationFailed;
         }
@@ -327,7 +344,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
                 std::string value;
                 rcp.paymentRequest.SerializeToString(&value);
                 newTx->vOrderForm.push_back(make_pair(key, value));
-            } else if (!rcp.message.isEmpty()) // Message from normal SIERRA:URI (SIERRA:XyZ...?message=example)
+            } else if (!rcp.message.isEmpty()) // Message from normal projectcoin:URI (projectcoin:XyZ...?message=example)
             {
                 newTx->vOrderForm.push_back(make_pair("Message", rcp.message.toStdString()));
             }
@@ -337,7 +354,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
 
         transaction.getRecipients();
 
-        if (!wallet->CommitTransaction(*newTx, *keyChange, (recipients[0].useInstantX) ? "ix" : "tx"))
+        if (!wallet->CommitTransaction(*newTx, *keyChange, (recipients[0].useSwiftTX) ? "ix" : "tx"))
             return TransactionCommitFailed;
 
         CTransaction* t = (CTransaction*)newTx;
@@ -354,18 +371,7 @@ WalletModel::SendCoinsReturn WalletModel::sendCoins(WalletModelTransaction& tran
             std::string strAddress = rcp.address.toStdString();
             CTxDestination dest = CBitcoinAddress(strAddress).Get();
             std::string strLabel = rcp.label.toStdString();
-            {
-                LOCK(wallet->cs_wallet);
-
-                std::map<CTxDestination, CAddressBookData>::iterator mi = wallet->mapAddressBook.find(dest);
-
-                // Check if we have a new address or an updated label
-                if (mi == wallet->mapAddressBook.end()) {
-                    wallet->SetAddressBook(dest, strLabel, "send");
-                } else if (mi->second.name != strLabel) {
-                    wallet->SetAddressBook(dest, strLabel, ""); // "" means don't change purpose
-                }
-            }
+            updateAddressBookLabels(dest, strLabel, "send");
         }
         emit coinsSent(wallet, rcp, transaction_array);
     }
@@ -398,13 +404,14 @@ WalletModel::EncryptionStatus WalletModel::getEncryptionStatus() const
 {
     if (!wallet->IsCrypted()) {
         return Unencrypted;
-    } else if (wallet->IsLocked()) {
-        return Locked;
     } else if (wallet->fWalletUnlockAnonymizeOnly) {
         return UnlockedForAnonymizationOnly;
+    } else if (wallet->IsLocked()) {
+        return Locked;
     } else {
         return Unlocked;
     }
+
 }
 
 bool WalletModel::setWalletEncrypted(bool encrypted, const SecureString& passphrase)
@@ -504,6 +511,12 @@ static void NotifyWatchonlyChanged(WalletModel* walletmodel, bool fHaveWatchonly
         Q_ARG(bool, fHaveWatchonly));
 }
 
+static void NotifyMultiSigChanged(WalletModel* walletmodel, bool fHaveMultiSig)
+{
+    QMetaObject::invokeMethod(walletmodel, "updateMultiSigFlag", Qt::QueuedConnection,
+                              Q_ARG(bool, fHaveMultiSig));
+}
+
 void WalletModel::subscribeToCoreSignals()
 {
     // Connect signals to wallet
@@ -512,6 +525,7 @@ void WalletModel::subscribeToCoreSignals()
     wallet->NotifyTransactionChanged.connect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
     wallet->ShowProgress.connect(boost::bind(ShowProgress, this, _1, _2));
     wallet->NotifyWatchonlyChanged.connect(boost::bind(NotifyWatchonlyChanged, this, _1));
+    wallet->NotifyMultiSigChanged.connect(boost::bind(NotifyMultiSigChanged, this, _1));
 }
 
 void WalletModel::unsubscribeFromCoreSignals()
@@ -522,6 +536,7 @@ void WalletModel::unsubscribeFromCoreSignals()
     wallet->NotifyTransactionChanged.disconnect(boost::bind(NotifyTransactionChanged, this, _1, _2, _3));
     wallet->ShowProgress.disconnect(boost::bind(ShowProgress, this, _1, _2));
     wallet->NotifyWatchonlyChanged.disconnect(boost::bind(NotifyWatchonlyChanged, this, _1));
+    wallet->NotifyMultiSigChanged.disconnect(boost::bind(NotifyMultiSigChanged, this, _1));
 }
 
 // WalletModel::UnlockContext implementation
@@ -531,6 +546,7 @@ WalletModel::UnlockContext WalletModel::requestUnlock(bool relock)
 
     if (!was_locked && isAnonymizeOnlyUnlocked()) {
         setWalletLocked(true);
+        wallet->fWalletUnlockAnonymizeOnly = false;
         was_locked = getEncryptionStatus() == Locked;
     }
 
@@ -545,9 +561,10 @@ WalletModel::UnlockContext WalletModel::requestUnlock(bool relock)
     //    return UnlockContext(this, valid, was_locked && !isAnonymizeOnlyUnlocked());
 }
 
-WalletModel::UnlockContext::UnlockContext(WalletModel* wallet, bool valid, bool relock) : wallet(wallet),
-                                                                                          valid(valid),
-                                                                                          relock(relock)
+WalletModel::UnlockContext::UnlockContext(WalletModel* wallet, bool valid, bool relock)
+  : wallet(wallet),
+    valid(valid),
+    relock(relock)
 {
 }
 

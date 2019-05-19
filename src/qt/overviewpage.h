@@ -1,4 +1,7 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -35,12 +38,10 @@ public:
     void setClientModel(ClientModel* clientModel);
     void setWalletModel(WalletModel* walletModel);
     void showOutOfSyncWarning(bool fShow);
-    // Removing Darksend - BJK
-    // void updateDarksendProgress();
+    void updateObfuscationProgress();
 
 public slots:
-    // Removing Darksend - BJK
-    // void DarKsendStatus();
+    void obfuScationStatus();
     void setBalance(const CAmount& balance, const CAmount& unconfirmedBalance, const CAmount& immatureBalance, const CAmount& anonymizedBalance, const CAmount& watchOnlyBalance, const CAmount& watchUnconfBalance, const CAmount& watchImmatureBalance);
 
 signals:
@@ -48,6 +49,8 @@ signals:
 
 private:
     QTimer* timer;
+    QTimer* timerinfo_mn;
+    QTimer* timerinfo_blockchain;
     Ui::OverviewPage* ui;
     ClientModel* clientModel;
     WalletModel* walletModel;
@@ -64,14 +67,16 @@ private:
     TransactionFilterProxy* filter;
 
 private slots:
-    // Removing Darksend - BJK
-    // void toggleDarksend();
-    // void DarksendAuto();
-    // void DarksendReset();
+    void toggleObfuscation();
+    void obfuscationAuto();
+    void obfuscationReset();
     void updateDisplayUnit();
     void handleTransactionClicked(const QModelIndex& index);
     void updateAlerts(const QString& warnings);
     void updateWatchOnlyLabels(bool showWatchOnly);
+    void updateMasternodeInfo();
+    void updatBlockChainInfo();
+    void openMyAddresses();
 };
 
 #endif // BITCOIN_QT_OVERVIEWPAGE_H

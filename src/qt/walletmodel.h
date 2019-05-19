@@ -1,4 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -9,7 +12,7 @@
 #include "walletmodeltransaction.h"
 
 #include "allocators.h" /* for SecureString */
-#include "Instantx.h"
+#include "swifttx.h"
 #include "wallet.h"
 
 #include <map>
@@ -49,7 +52,7 @@ public:
     QString address;
     QString label;
     AvailableCoinsType inputType;
-    bool useInstantX;
+    bool useSwiftTX;
     CAmount amount;
     // If from a payment request, this is used for storing the memo
     QString message;
@@ -213,6 +216,7 @@ public:
 private:
     CWallet* wallet;
     bool fHaveWatchOnly;
+    bool fHaveMultiSig;
     bool fForceCheckBalanceChanged;
 
     // Wallet has an options model for wallet-specific options
@@ -234,8 +238,7 @@ private:
     EncryptionStatus cachedEncryptionStatus;
     int cachedNumBlocks;
     int cachedTxLocks;
-    // Removing Darksend - BJK
-    // int cachedDarksendRounds;
+    int cachedObfuscationRounds;
 
     QTimer* pollTimer;
 
@@ -267,6 +270,8 @@ signals:
     // Watch-only address added
     void notifyWatchonlyChanged(bool fHaveWatchonly);
 
+    // MultiSig address added
+    void notifyMultiSigChanged(bool fHaveMultiSig);
 public slots:
     /* Wallet status might have changed */
     void updateStatus();
@@ -276,8 +281,12 @@ public slots:
     void updateAddressBook(const QString& address, const QString& label, bool isMine, const QString& purpose, int status);
     /* Watch-only added */
     void updateWatchOnlyFlag(bool fHaveWatchonly);
+    /* MultiSig added */
+    void updateMultiSigFlag(bool fHaveMultiSig);
     /* Current, immature or unconfirmed balance might have changed - emit 'balanceChanged' if so */
     void pollBalanceChanged();
+    /* Update address book labels in the database */
+    void updateAddressBookLabels(const CTxDestination& address, const string& strName, const string& strPurpose);
 };
 
 #endif // BITCOIN_QT_WALLETMODEL_H

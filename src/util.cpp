@@ -1,14 +1,14 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2017-2018 The Bulwark developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "util.h"
@@ -107,24 +107,24 @@ std::string to_internal(const std::string&);
 
 using namespace std;
 
-//Sierra only features
-
+// ProjectCoin only features
+// Masternode
 bool fMasterNode = false;
 string strMasterNodePrivKey = "";
 string strMasterNodeAddr = "";
 bool fLiteMode = false;
-bool fEnableInstantX = true;
-int nInstantXDepth = 5;
-int nDarksendRounds = 2;
-int nAnonymizeAmount = 1000;
+// SwiftX
+bool fEnableSwiftTX = true;
+int nSwiftTXDepth = 5;
+int nObfuscationRounds = 2;
+int nAnonymizePrjAmount = 1000;
 int nLiquidityProvider = 0;
 /** Spork enforcement enabled time */
 int64_t enforceMasternodePaymentsTime = 4085657524;
 bool fSucessfullyLoaded = false;
-bool fEnableDarksend = false;
-/** All denominations used by Darksend */
-std::vector<int64_t> DarKsendDenominations;
-string strBudgetMode = "";
+bool fEnableObfuscation = false;
+/** All denominations used by obfuscation */
+std::vector<int64_t> obfuScationDenominations;
 
 map<string, string> mapArgs;
 map<string, vector<string> > mapMultiArgs;
@@ -234,13 +234,12 @@ bool LogAcceptCategory(const char* category)
             const vector<string>& categories = mapMultiArgs["-debug"];
             ptrCategory.reset(new set<string>(categories.begin(), categories.end()));
             // thread_specific_ptr automatically deletes the set when the thread ends.
-            // "sierra" is a composite category enabling all Sierra-related debug output
-            if (ptrCategory->count(string("sierra"))) {
-                ptrCategory->insert(string("Darksend"));
-                ptrCategory->insert(string("Instantx"));
+            // "projectcoin" is a composite category enabling all ProjectCoin-related debug output
+            if (ptrCategory->count(string("projectcoin"))) {
+                ptrCategory->insert(string("obfuscation"));
+                ptrCategory->insert(string("swiftx"));
                 ptrCategory->insert(string("masternode"));
                 ptrCategory->insert(string("mnpayments"));
-                ptrCategory->insert(string("mnbudget"));
             }
         }
         const set<string>& setCategories = *ptrCategory.get();
@@ -399,7 +398,7 @@ static std::string FormatException(std::exception* pex, const char* pszThread)
     char pszModule[MAX_PATH] = "";
     GetModuleFileNameA(NULL, pszModule, sizeof(pszModule));
 #else
-    const char* pszModule = "sierra";
+    const char* pszModule = "projectcoin";
 #endif
     if (pex)
         return strprintf(
@@ -420,13 +419,13 @@ void PrintExceptionContinue(std::exception* pex, const char* pszThread)
 boost::filesystem::path GetDefaultDataDir()
 {
     namespace fs = boost::filesystem;
-// Windows < Vista: C:\Documents and Settings\Username\Application Data\Sierra
-// Windows >= Vista: C:\Users\Username\AppData\Roaming\Sierra
-// Mac: ~/Library/Application Support/Sierra
-// Unix: ~/.sierra
+// Windows < Vista: C:\Documents and Settings\Username\Application Data\ProjectCoin
+// Windows >= Vista: C:\Users\Username\AppData\Roaming\ProjectCoin
+// Mac: ~/Library/Application Support/ProjectCoin
+// Unix: ~/.projectcoin
 #ifdef WIN32
     // Windows
-    return GetSpecialFolderPath(CSIDL_APPDATA) / "Sierra";
+    return GetSpecialFolderPath(CSIDL_APPDATA) / "ProjectCoin";
 #else
     fs::path pathRet;
     char* pszHome = getenv("HOME");
@@ -438,24 +437,25 @@ boost::filesystem::path GetDefaultDataDir()
     // Mac
     pathRet /= "Library/Application Support";
     TryCreateDirectory(pathRet);
-    return pathRet / "Sierra";
+    return pathRet / "ProjectCoin";
 #else
     // Unix
-    return pathRet / ".sierra";
+    return pathRet / ".projectcoin";
 #endif
 #endif
 }
 
 static boost::filesystem::path pathCached;
+static boost::filesystem::path pathCachedNetSpecific;
 static CCriticalSection csPathCached;
 
-const boost::filesystem::path& GetDataDir()
+const boost::filesystem::path& GetDataDir(bool fNetSpecific)
 {
     namespace fs = boost::filesystem;
 
     LOCK(csPathCached);
 
-    fs::path& path = pathCached;
+    fs::path& path = fNetSpecific ? pathCachedNetSpecific : pathCached;
 
     // This can be called during exceptions by LogPrintf(), so we cache the
     // value so we don't have to do memory allocations after that.
@@ -471,7 +471,8 @@ const boost::filesystem::path& GetDataDir()
     } else {
         path = GetDefaultDataDir();
     }
-    path /= BaseParams().DataDir();
+    if (fNetSpecific)
+        path /= BaseParams().DataDir();
 
     fs::create_directories(path);
 
@@ -481,12 +482,15 @@ const boost::filesystem::path& GetDataDir()
 void ClearDatadirCache()
 {
     pathCached = boost::filesystem::path();
+    pathCachedNetSpecific = boost::filesystem::path();
 }
 
 boost::filesystem::path GetConfigFile()
 {
-    boost::filesystem::path pathConfigFile(GetArg("-conf", "sierra.conf"));
-    if (!pathConfigFile.is_complete()) pathConfigFile = GetDataDir() / pathConfigFile;
+    boost::filesystem::path pathConfigFile(GetArg("-conf", "projectcoin.conf"));
+    if (!pathConfigFile.is_complete())
+        pathConfigFile = GetDataDir(false) / pathConfigFile;
+
     return pathConfigFile;
 }
 
@@ -502,7 +506,7 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
 {
     boost::filesystem::ifstream streamConfig(GetConfigFile());
     if (!streamConfig.good()) {
-        // Create empty sierra.conf if it does not exist
+        // Create empty projectcoin.conf if it does not exist
         FILE* configFile = fopen(GetConfigFile().string().c_str(), "a");
         if (configFile != NULL)
             fclose(configFile);
@@ -513,7 +517,7 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
     setOptions.insert("*");
 
     for (boost::program_options::detail::config_file_iterator it(streamConfig, setOptions), end; it != end; ++it) {
-        // Don't overwrite existing settings so command line settings override sierra.conf
+        // Don't overwrite existing settings so command line settings override projectcoin.conf
         string strKey = string("-") + it->string_key;
         string strValue = it->value[0];
         InterpretNegativeSetting(strKey, strValue);
@@ -528,7 +532,7 @@ void ReadConfigFile(map<string, string>& mapSettingsRet,
 #ifndef WIN32
 boost::filesystem::path GetPidFile()
 {
-    boost::filesystem::path pathPidFile(GetArg("-pid", "sierrad.pid"));
+    boost::filesystem::path pathPidFile(GetArg("-pid", "projectcoind.pid"));
     if (!pathPidFile.is_complete()) pathPidFile = GetDataDir() / pathPidFile;
     return pathPidFile;
 }

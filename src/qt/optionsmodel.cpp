@@ -1,13 +1,12 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "optionsmodel.h"
@@ -63,7 +62,7 @@ void OptionsModel::Init()
 
     // Display
     if (!settings.contains("nDisplayUnit"))
-        settings.setValue("nDisplayUnit", BitcoinUnits::SIERRA);
+        settings.setValue("nDisplayUnit", BitcoinUnits::PRJ);
     nDisplayUnit = settings.value("nDisplayUnit").toInt();
 
     if (!settings.contains("strThirdPartyTxUrls"))
@@ -74,16 +73,14 @@ void OptionsModel::Init()
         settings.setValue("fCoinControlFeatures", false);
     fCoinControlFeatures = settings.value("fCoinControlFeatures", false).toBool();
 
-    /* Removing Darksend - BJK
-    if (!settings.contains("nDarksendRounds"))
-        settings.setValue("nDarksendRounds", 2);
+    if (!settings.contains("nObfuscationRounds"))
+        settings.setValue("nObfuscationRounds", 2);
 
-    if (!settings.contains("nAnonymizeAmount"))
-        settings.setValue("nAnonymizeAmount", 1000);
+    if (!settings.contains("nAnonymizePrjAmount"))
+        settings.setValue("nAnonymizePrjAmount", 1000);
 
-    nDarksendRounds = settings.value("nDarksendRounds").toLongLong();
-    nAnonymizeAmount = settings.value("nAnonymizeAmount").toLongLong();
-    */
+    nObfuscationRounds = settings.value("nObfuscationRounds").toLongLong();
+    nAnonymizePrjAmount = settings.value("nAnonymizePrjAmount").toLongLong();
 
     if (!settings.contains("fShowMasternodesTab"))
         settings.setValue("fShowMasternodesTab", masternodeConfig.getCount());
@@ -148,12 +145,10 @@ void OptionsModel::Init()
     if (!SoftSetArg("-lang", settings.value("language").toString().toStdString()))
         addOverriddenOption("-lang");
 
-    /* Removing Darksend - BJK
-    if (settings.contains("nDarksendRounds"))
-        SoftSetArg("-Darksendrounds", settings.value("nDarksendRounds").toString().toStdString());
-    if (settings.contains("nAnonymizeAmount"))
-        SoftSetArg("-anonymizeamount", settings.value("nAnonymizeAmount").toString().toStdString());
-    */
+    if (settings.contains("nObfuscationRounds"))
+        SoftSetArg("-obfuscationrounds", settings.value("nObfuscationRounds").toString().toStdString());
+    if (settings.contains("nAnonymizePrjAmount"))
+        SoftSetArg("-anonymizeprojectcoinamount", settings.value("nAnonymizePrjAmount").toString().toStdString());
 
     language = settings.value("language").toString();
 }
@@ -164,7 +159,7 @@ void OptionsModel::Reset()
 
     // Remove all entries from our QSettings object
     settings.clear();
-    resetSettings = true; // Needed in sierra.cpp during shutdown to also remove the window positions
+    resetSettings = true; // Needed in projectcoin.cpp during shotdown to also remove the window positions
 
     // default setting for OptionsModel::StartAtStartup - disabled
     if (GUIUtil::GetStartOnSystemStartup())
@@ -231,12 +226,10 @@ QVariant OptionsModel::data(const QModelIndex& index, int role) const
             return settings.value("nDatabaseCache");
         case ThreadsScriptVerif:
             return settings.value("nThreadsScriptVerif");
-        /* Removing Darksend - BJK
-        case DarksendRounds:
-            return QVariant(nDarksendRounds);
-        case AnonymizeAmount:
-            return QVariant(nAnonymizeAmount);
-        */
+        case ObfuscationRounds:
+            return QVariant(nObfuscationRounds);
+        case AnonymizePrjAmount:
+            return QVariant(nAnonymizePrjAmount);
         case Listen:
             return settings.value("fListen");
         default:
@@ -340,18 +333,16 @@ bool OptionsModel::setData(const QModelIndex& index, const QVariant& value, int 
                 setRestartRequired(true);
             }
             break;
-        /* Removing Darksend - BJK
-        case DarksendRounds:
-            nDarksendRounds = value.toInt();
-            settings.setValue("nDarksendRounds", nDarksendRounds);
-            emit DarksendRoundsChanged(nDarksendRounds);
+        case ObfuscationRounds:
+            nObfuscationRounds = value.toInt();
+            settings.setValue("nObfuscationRounds", nObfuscationRounds);
+            emit obfuscationRoundsChanged(nObfuscationRounds);
             break;
-        case AnonymizeAmount:
-            nAnonymizeAmount = value.toInt();
-            settings.setValue("nAnonymizeAmount", nAnonymizeAmount);
-            emit anonymizeAmountChanged(nAnonymizeAmount);
+        case AnonymizePrjAmount:
+            nAnonymizePrjAmount = value.toInt();
+            settings.setValue("nAnonymizePrjAmount", nAnonymizePrjAmount);
+            emit anonymizePrjAmountChanged(nAnonymizePrjAmount);
             break;
-        */
         case CoinControlFeatures:
             fCoinControlFeatures = value.toBool();
             settings.setValue("fCoinControlFeatures", fCoinControlFeatures);
@@ -403,8 +394,8 @@ bool OptionsModel::getProxySettings(QNetworkProxy& proxy) const
     proxyType curProxy;
     if (GetProxy(NET_IPV4, curProxy)) {
         proxy.setType(QNetworkProxy::Socks5Proxy);
-        proxy.setHostName(QString::fromStdString(curProxy.ToStringIP()));
-        proxy.setPort(curProxy.GetPort());
+        proxy.setHostName(QString::fromStdString(curProxy.proxy.ToStringIP()));
+        proxy.setPort(curProxy.proxy.GetPort());
 
         return true;
     } else

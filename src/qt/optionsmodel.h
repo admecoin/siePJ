@@ -1,4 +1,7 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -43,9 +46,8 @@ public:
         ThreadsScriptVerif,  // int
         DatabaseCache,       // int
         SpendZeroConfChange, // bool
-        // Removing Darksend - BJK
-        // DarksendRounds,      // int
-        // AnonymizeAmount,     // int
+        ObfuscationRounds,   // int
+        AnonymizePrjAmount, //int
         ShowMasternodesTab,  // bool
         Listen,              // bool
         OptionIDRowCount,
@@ -90,10 +92,8 @@ private:
 
 signals:
     void displayUnitChanged(int unit);
-    /* Removing Darksend - BJK
-    void DarksendRoundsChanged(int);
-    void anonymizeAmountChanged(int);
-    */
+    void obfuscationRoundsChanged(int);
+    void anonymizePrjAmountChanged(int);
     void coinControlFeaturesChanged(bool);
 };
 

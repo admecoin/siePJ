@@ -1,12 +1,16 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-//
+
 #ifndef BITCOIN_QT_WALLETFRAME_H
 #define BITCOIN_QT_WALLETFRAME_H
 
 #include <QFrame>
 #include <QMap>
+#include "toolspage.h"
 
 class BitcoinGUI;
 class ClientModel;
@@ -15,6 +19,7 @@ class WalletModel;
 class WalletView;
 class TradingDialog;
 class BlockExplorer;
+class ToolsPage;
 
 QT_BEGIN_NAMESPACE
 class QStackedWidget;
@@ -52,14 +57,13 @@ private:
 public slots:
     /** Switch to overview (home) page */
     void gotoOverviewPage();
-	
-	////AAAA
-	  /** Switch to overview (home) page */
-    void gotocoinmixPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
     /** Switch to masternode page */
     void gotoMasternodePage();
+    /** Switch to tools page */
+    void gotoToolsPage();
+    void gotoToolsPageTab(enum ToolsPage::TabTypes page);
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */
@@ -72,6 +76,9 @@ public slots:
     void gotoVerifyMessageTab(QString addr = "");
     /** Show MultiSend Dialog **/
     void gotoMultiSendDialog();
+
+     /** show a multisig tab **/
+    void gotoMultisigDialog(int index);
 
     /** Show BIP 38 tool - default to Encryption tab */
     void gotoBip38Tool();

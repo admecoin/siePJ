@@ -30,7 +30,7 @@
        <item>
         <widget class="QLabel" name="infoLabel_ENC">
          <property name="text">
-          <string>Enter a Sierra Address that you would like to encrypt using BIP 38. Enter a passphrase in the middle box. Press encrypt to compute the encrypted private key.</string>
+          <string>Enter a ProjectCoin Address that you would like to encrypt using BIP 38. Enter a passphrase in the middle box. Press encrypt to compute the encrypted private key.</string>
          </property>
          <property name="textFormat">
           <enum>Qt::PlainText</enum>
@@ -43,10 +43,16 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_1_ENC">
          <property name="spacing">
-          <number>0</number>
+          <number>2</number>
          </property>
          <item>
           <widget class="QLabel" name="label_5">
+           <property name="minimumSize">
+            <size>
+             <width>102</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="text">
             <string>Address:</string>
            </property>
@@ -55,7 +61,7 @@
          <item>
           <widget class="QValidatedLineEdit" name="addressIn_ENC">
            <property name="toolTip">
-            <string>The Sierra address to sign the message with</string>
+            <string>The ProjectCoin address to sign the message with</string>
            </property>
           </widget>
          </item>
@@ -68,7 +74,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="../sierra.qrc">
+            <iconset resource="../projectcoin.qrc">
              <normaloff>:/icons/address-book</normaloff>:/icons/address-book</iconset>
            </property>
            <property name="shortcut">
@@ -88,7 +94,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="../sierra.qrc">
+            <iconset resource="../projectcoin.qrc">
              <normaloff>:/icons/editpaste</normaloff>:/icons/editpaste</iconset>
            </property>
            <property name="shortcut">
@@ -103,8 +109,17 @@
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_5">
+         <property name="spacing">
+          <number>2</number>
+         </property>
          <item>
           <widget class="QLabel" name="label_6">
+           <property name="minimumSize">
+            <size>
+             <width>102</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="text">
             <string>Passphrase: </string>
            </property>
@@ -122,7 +137,7 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2_ENC">
          <property name="spacing">
-          <number>0</number>
+          <number>2</number>
          </property>
          <item>
           <widget class="QLabel" name="encryptedKeyLabel_ENC">
@@ -155,7 +170,7 @@
             <string/>
            </property>
            <property name="icon">
-            <iconset resource="../sierra.qrc">
+            <iconset resource="../projectcoin.qrc">
              <normaloff>:/icons/editcopy</normaloff>:/icons/editcopy</iconset>
            </property>
            <property name="autoDefault">
@@ -170,13 +185,13 @@
          <item>
           <widget class="QPushButton" name="encryptKeyButton_ENC">
            <property name="toolTip">
-            <string>Sign the message to prove you own this Sierra address</string>
+            <string>Sign the message to prove you own this ProjectCoin address</string>
            </property>
            <property name="text">
             <string>Encrypt &amp;Key</string>
            </property>
            <property name="icon">
-            <iconset resource="../sierra.qrc">
+            <iconset resource="../projectcoin.qrc">
              <normaloff>:/icons/edit</normaloff>:/icons/edit</iconset>
            </property>
            <property name="autoDefault">
@@ -193,7 +208,7 @@
             <string>Clear &amp;All</string>
            </property>
            <property name="icon">
-            <iconset resource="../sierra.qrc">
+            <iconset resource="../projectcoin.qrc">
              <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
            </property>
            <property name="autoDefault">
@@ -270,8 +285,17 @@
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <property name="spacing">
+          <number>2</number>
+         </property>
          <item>
           <widget class="QLabel" name="label_2">
+           <property name="minimumSize">
+            <size>
+             <width>104</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="text">
             <string>Encrypted Key:</string>
            </property>
@@ -280,7 +304,7 @@
          <item>
           <widget class="QValidatedLineEdit" name="encryptedKeyIn_DEC">
            <property name="toolTip">
-            <string>The Sierra address the message was signed with</string>
+            <string>The ProjectCoin address the message was signed with</string>
            </property>
           </widget>
          </item>
@@ -288,8 +312,17 @@
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout">
+         <property name="spacing">
+          <number>2</number>
+         </property>
          <item>
           <widget class="QLabel" name="label">
+           <property name="minimumSize">
+            <size>
+             <width>104</width>
+             <height>0</height>
+            </size>
+           </property>
            <property name="text">
             <string>Passphrase: </string>
            </property>
@@ -309,13 +342,13 @@
          <item>
           <widget class="QPushButton" name="decryptKeyButton_DEC">
            <property name="toolTip">
-            <string>Verify the message to ensure it was signed with the specified Sierra address</string>
+            <string>Verify the message to ensure it was signed with the specified ProjectCoin address</string>
            </property>
            <property name="text">
             <string>Decrypt &amp;Key</string>
            </property>
            <property name="icon">
-            <iconset resource="../sierra.qrc">
+            <iconset resource="../projectcoin.qrc">
              <normaloff>:/icons/transaction_0</normaloff>:/icons/transaction_0</iconset>
            </property>
            <property name="autoDefault">
@@ -332,7 +365,7 @@
             <string>Clear &amp;All</string>
            </property>
            <property name="icon">
-            <iconset resource="../sierra.qrc">
+            <iconset resource="../projectcoin.qrc">
              <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
            </property>
            <property name="autoDefault">
@@ -386,6 +419,9 @@
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <property name="spacing">
+          <number>2</number>
+         </property>
          <item>
           <widget class="QLabel" name="label_3">
            <property name="text">
@@ -433,7 +469,7 @@
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="../sierra.qrc"/>
+  <include location="../projectcoin.qrc"/>
  </resources>
  <connections/>
 </ui>

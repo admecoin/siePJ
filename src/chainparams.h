@@ -1,5 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX Core developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,8 +14,10 @@
 #include "primitives/block.h"
 #include "protocol.h"
 #include "uint256.h"
+#include "amount.h"
 
 #include <vector>
+#include <map>
 
 typedef unsigned char MessageStartChars[MESSAGE_START_SIZE];
 
@@ -23,7 +28,7 @@ struct CDNSSeedData {
 
 /**
  * CChainParams defines various tweakable parameters of a given instance of the
- * Sierra system. There are three: the main network on which people trade goods
+ * ProjectCoin system. There are three: the main network on which people trade goods
  * and services, the public test network which gets reset from time to time and
  * a regression test mode which is intended for private networks only. It has
  * minimal difficulty to ensure that blocks can be found instantly.
@@ -45,9 +50,16 @@ public:
     const uint256& HashGenesisBlock() const { return hashGenesisBlock; }
     const MessageStartChars& MessageStart() const { return pchMessageStart; }
     const std::vector<unsigned char>& AlertKey() const { return vAlertPubKey; }
+
+    // const std::vector<unsigned char>& ProjectCoinDevKey() const { return vProjectCoinDevKey; }
+    // const std::vector<unsigned char>& ProjectCoinFundKey() const { return vProjectCoinFundKey; }
+    // int GetDevFee() const { return nDevFee; }
+    // int GetFundFee() const { return nFundFee; }
+
     int GetDefaultPort() const { return nDefaultPort; }
     const uint256& ProofOfWorkLimit() const { return bnProofOfWorkLimit; }
-    int SubsidyHalvingInterval() const { return nSubsidyHalvingInterval; }
+    const uint256& StartWork() const { return bnStartWork; }
+
     /** Used to check majorities for block version upgrade */
     int EnforceBlockUpgradeMajority() const { return nEnforceBlockUpgradeMajority; }
     int RejectBlockOutdatedMajority() const { return nRejectBlockOutdatedMajority; }
@@ -61,25 +73,21 @@ public:
     /** Make miner wait to have peers to avoid wasting work */
     bool MiningRequiresPeers() const { return fMiningRequiresPeers; }
     /** Headers first syncing is disabled */
-    bool HeadersFirstSyncingActive() const { return fHeadersFirstSyncingActive; };
+    bool HeadersFirstSyncingActive() const { return fHeadersFirstSyncingActive; }
     /** Default value for -checkmempool and -checkblockindex argument */
     bool DefaultConsistencyChecks() const { return fDefaultConsistencyChecks; }
-    /** Allow mining of a min-difficulty block */
-    bool AllowMinDifficultyBlocks() const { return fAllowMinDifficultyBlocks; }
     /** Skip proof-of-work check: allow mining of any difficulty block */
     bool SkipProofOfWorkCheck() const { return fSkipProofOfWorkCheck; }
     /** Make standard checks */
     bool RequireStandard() const { return fRequireStandard; }
-    int64_t TargetTimespan() const { return nTargetTimespan; }
     int64_t TargetSpacing() const { return nTargetSpacing; }
-    int64_t Interval() const { return nTargetTimespan / nTargetSpacing; }
-    int LAST_POW_BLOCK() const { return nLastPOWBlock; }
+    int64_t TargetSpacingSlowLaunch() const { return nTargetSpacingSlowLaunch; }
+    /** Instamine Prevention, Zero reward to block **/
+    // int ANTI_INSTAMINE_TIME() const { return nAntiInstamineTime; }
     int COINBASE_MATURITY() const { return nMaturity; }
-    int ModifierUpgradeBlock() const { return nModifierUpdateBlock; }
     CAmount MaxMoneyOut() const { return nMaxMoneyOut; }
     /** The masternode count that we will allow the see-saw reward payments to be off by */
     int MasternodeCountDrift() const { return nMasternodeCountDrift; }
-	int MasternodeColleteralLimxDev() const { return nMasternodeColleteralLimxDev; }
     /** Make miner stop after a block is found. In RPC, don't return until nGenProcLimit blocks are generated */
     bool MineBlocksOnDemand() const { return fMineBlocksOnDemand; }
     /** In the future use NetworkIDString() for RPC fields */
@@ -92,9 +100,16 @@ public:
     virtual const Checkpoints::CCheckpointData& Checkpoints() const = 0;
     int PoolMaxTransactions() const { return nPoolMaxTransactions; }
     std::string SporkKey() const { return strSporkKey; }
-    std::string DarksendPoolDummyAddress() const { return strDarksendPoolDummyAddress; }
+    std::string ObfuscationPoolDummyAddress() const { return strObfuscationPoolDummyAddress; }
     int64_t StartMasternodePayments() const { return nStartMasternodePayments; }
     CBaseChainParams::Network NetworkID() const { return networkID; }
+
+    /** Height or Time Based Activations **/
+    //todo: ModifierUpgradeBlock affect POS
+    int ModifierUpgradeBlock() const { return nModifierUpdateBlock; }
+    int LAST_POW_BLOCK() const { return nLastPOWBlock; }
+    int StartMNPaymentsBlock() const {return nStartMasternodePaymentsBlock; }
+
 
 protected:
     CChainParams() {}
@@ -103,20 +118,24 @@ protected:
     MessageStartChars pchMessageStart;
     //! Raw pub key bytes for the broadcast alert signing key.
     std::vector<unsigned char> vAlertPubKey;
+    // std::vector<unsigned char> vProjectCoinDevKey;
+    // std::vector<unsigned char> vProjectCoinFundKey;
+    // int nDevFee;
+    // int nFundFee;
     int nDefaultPort;
-	int nMasternodeColleteralLimxDev;
     uint256 bnProofOfWorkLimit;
+    uint256 bnStartWork;
     int nMaxReorganizationDepth;
-    int nSubsidyHalvingInterval;
     int nEnforceBlockUpgradeMajority;
     int nRejectBlockOutdatedMajority;
     int nToCheckBlockUpgradeMajority;
-    int64_t nTargetTimespan;
     int64_t nTargetSpacing;
+    int64_t nTargetSpacingSlowLaunch;
+    // int nAntiInstamineTime;
     int nLastPOWBlock;
+    int nStartMasternodePaymentsBlock;
     int nMasternodeCountDrift;
     int nMaturity;
-	int nMaturityMAX;
     int nModifierUpdateBlock;
     CAmount nMaxMoneyOut;
     int nMinerThreads;
@@ -128,7 +147,6 @@ protected:
     std::vector<CAddress> vFixedSeeds;
     bool fRequireRPCPassword;
     bool fMiningRequiresPeers;
-    bool fAllowMinDifficultyBlocks;
     bool fDefaultConsistencyChecks;
     bool fRequireStandard;
     bool fMineBlocksOnDemand;
@@ -137,11 +155,11 @@ protected:
     bool fHeadersFirstSyncingActive;
     int nPoolMaxTransactions;
     std::string strSporkKey;
-    std::string strDarksendPoolDummyAddress;
+    std::string strObfuscationPoolDummyAddress;
     int64_t nStartMasternodePayments;
 };
 
-/** 
+/**
  * Modifiable parameters interface is used by test cases to adapt the parameters in order
  * to test specific features more easily. Test cases should always restore the previous
  * values after finalization.
@@ -151,12 +169,10 @@ class CModifiableParams
 {
 public:
     //! Published setters to allow changing values in unit test cases
-    virtual void setSubsidyHalvingInterval(int anSubsidyHalvingInterval) = 0;
     virtual void setEnforceBlockUpgradeMajority(int anEnforceBlockUpgradeMajority) = 0;
     virtual void setRejectBlockOutdatedMajority(int anRejectBlockOutdatedMajority) = 0;
     virtual void setToCheckBlockUpgradeMajority(int anToCheckBlockUpgradeMajority) = 0;
     virtual void setDefaultConsistencyChecks(bool aDefaultConsistencyChecks) = 0;
-    virtual void setAllowMinDifficultyBlocks(bool aAllowMinDifficultyBlocks) = 0;
     virtual void setSkipProofOfWorkCheck(bool aSkipProofOfWorkCheck) = 0;
 };
 

@@ -9,8 +9,8 @@
 #include <vector>
 
 /**
- * CBaseChainParams defines the base parameters (shared between sierra-cli and sierrad)
- * of a given instance of the Sierra system.
+ * CBaseChainParams defines the base parameters (shared between projectcoin-cli and projectcoind)
+ * of a given instance of the ProjectCoin system.
  */
 class CBaseChainParams
 {
@@ -20,6 +20,7 @@ public:
         TESTNET,
         REGTEST,
         UNITTEST,
+
         MAX_NETWORK_TYPES
     };
 

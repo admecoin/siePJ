@@ -197,7 +197,6 @@ bool IsStandard(const CScript& scriptPubKey, txnouttype& whichType)
     } else if (whichType == TX_NULL_DATA &&
                 (!GetBoolArg("-datacarrier", true) || scriptPubKey.size() > nMaxDatacarrierBytes))
         return false;
-
     return whichType != TX_NONSTANDARD;
 }
 

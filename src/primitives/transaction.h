@@ -1,10 +1,13 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2015-2017 The PIVX developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #ifndef BITCOIN_PRIMITIVES_TRANSACTION_H
 #define BITCOIN_PRIMITIVES_TRANSACTION_H
+
+#include <list>
 
 #include "amount.h"
 #include "script/script.h"
@@ -248,6 +251,8 @@ public:
 
     // Compute modified tx size for priority calculation (optionally given tx size)
     unsigned int CalculateModifiedSize(unsigned int nTxSize=0) const;
+
+    std::list<COutPoint> GetOutPoints() const;
 
     bool IsCoinBase() const
     {

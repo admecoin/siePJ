@@ -23,7 +23,7 @@ class AmountSpinBox : public QAbstractSpinBox
 
 public:
     explicit AmountSpinBox(QWidget* parent) : QAbstractSpinBox(parent),
-                                              currentUnit(BitcoinUnits::SIERRA),
+                                              currentUnit(BitcoinUnits::PRJ),
                                               singleStep(100000) // satoshis
     {
         setAlignment(Qt::AlignRight);
@@ -96,7 +96,7 @@ public:
 
             const QFontMetrics fm(fontMetrics());
             int h = lineEdit()->minimumSizeHint().height();
-            int w = fm.width(BitcoinUnits::format(BitcoinUnits::SIERRA, BitcoinUnits::maxMoney(), false, BitcoinUnits::separatorAlways));
+            int w = fm.width(BitcoinUnits::format(BitcoinUnits::PRJ, BitcoinUnits::maxMoney(), false, BitcoinUnits::separatorAlways));
             w += 2; // cursor blinking space
 
             QStyleOptionSpinBox opt;
@@ -191,6 +191,7 @@ BitcoinAmountField::BitcoinAmountField(QWidget* parent) : QWidget(parent),
     layout->addWidget(amount);
     unit = new QValueComboBox(this);
     unit->setModel(new BitcoinUnits(this));
+    unit->setVisible(false);
     layout->addWidget(unit);
     layout->addStretch(1);
     layout->setContentsMargins(0, 0, 0, 0);

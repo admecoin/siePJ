@@ -132,7 +132,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 SIERRA</string>
+          <string notr="true">0.00 ProjectCoin</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -206,7 +206,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 SIERRA</string>
+          <string notr="true">0.00 ProjectCoin</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -286,7 +286,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 SIERRA</string>
+          <string notr="true">0.00 ProjectCoin</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -321,7 +321,7 @@
           <enum>Qt::ActionsContextMenu</enum>
          </property>
          <property name="text">
-          <string notr="true">0.00 SIERRA</string>
+          <string notr="true">0.00 ProjectCoin</string>
          </property>
          <property name="textInteractionFlags">
           <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
@@ -464,9 +464,6 @@
       <property name="text">
        <string>Amount</string>
       </property>
-      <property name="textAlignment">
-       <set>AlignTrailing|AlignVCenter</set>
-      </property>
      </column>
      <column>
       <property name="text">
@@ -480,7 +477,7 @@
      </column>
      <column>
       <property name="text">
-       <string/>
+	<string>Type</string>
       </property>
      </column>
      <column>
@@ -494,9 +491,6 @@
       </property>
       <property name="toolTip">
        <string>Confirmed</string>
-      </property>
-      <property name="textAlignment">
-       <set>AlignTrailing|AlignVCenter</set>
       </property>
      </column>
      <column>

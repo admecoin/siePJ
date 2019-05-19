@@ -22,7 +22,7 @@ const CBlockIndex* getexplorerBlockIndex(int64_t);
 CTxOut getPrevOut(const COutPoint& out);
 void getNextIn(const COutPoint* Out, uint256* Hash, unsigned int n);
 
-class BlockExplorer : public QMainWindow
+class BlockExplorer : public QWidget
 {
     Q_OBJECT
 

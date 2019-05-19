@@ -1,8 +1,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -27,9 +26,8 @@
 #include <openssl/aes.h>
 #include <openssl/sha.h>
 
-#include "json/json_spirit_value.h"
+#include <univalue.h>
 
-using namespace json_spirit;
 using namespace std;
 
 void EnsureWalletIsUnlocked();
@@ -81,14 +79,14 @@ std::string DecodeDumpString(const std::string& str)
     return ret.str();
 }
 
-Value importprivkey(const Array& params, bool fHelp)
+UniValue importprivkey(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
-            "importprivkey \"sierraprivkey\" ( \"label\" rescan )\n"
+            "importprivkey \"projectcoinprivkey\" ( \"label\" rescan )\n"
             "\nAdds a private key (as returned by dumpprivkey) to your wallet.\n"
             "\nArguments:\n"
-            "1. \"sierraprivkey\"   (string, required) The private key (see dumpprivkey)\n"
+            "1. \"projectcoinprivkey\"   (string, required) The private key (see dumpprivkey)\n"
             "2. \"label\"            (string, optional, default=\"\") An optional label\n"
             "3. rescan               (boolean, optional, default=true) Rescan the wallet for transactions\n"
             "\nNote: This call can take minutes to complete if rescan is true.\n"
@@ -128,7 +126,7 @@ Value importprivkey(const Array& params, bool fHelp)
 
         // Don't throw error in case a key is already there
         if (pwalletMain->HaveKey(vchAddress))
-            return Value::null;
+            return NullUniValue;
 
         pwalletMain->mapKeyMetadata[vchAddress].nCreateTime = 1;
 
@@ -143,10 +141,10 @@ Value importprivkey(const Array& params, bool fHelp)
         }
     }
 
-    return Value::null;
+    return NullUniValue;
 }
 
-Value importaddress(const Array& params, bool fHelp)
+UniValue importaddress(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() < 1 || params.size() > 3)
         throw runtime_error(
@@ -172,7 +170,7 @@ Value importaddress(const Array& params, bool fHelp)
         std::vector<unsigned char> data(ParseHex(params[0].get_str()));
         script = CScript(data.begin(), data.end());
     } else {
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Sierra address or script");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid ProjectCoin address or script");
     }
 
     string strLabel = "";
@@ -194,7 +192,7 @@ Value importaddress(const Array& params, bool fHelp)
 
         // Don't throw error in case an address is already there
         if (pwalletMain->HaveWatchOnly(script))
-            return Value::null;
+            return NullUniValue;
 
         pwalletMain->MarkDirty();
 
@@ -207,10 +205,10 @@ Value importaddress(const Array& params, bool fHelp)
         }
     }
 
-    return Value::null;
+    return NullUniValue;
 }
 
-Value importwallet(const Array& params, bool fHelp)
+UniValue importwallet(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -303,18 +301,18 @@ Value importwallet(const Array& params, bool fHelp)
     if (!fGood)
         throw JSONRPCError(RPC_WALLET_ERROR, "Error adding some keys to wallet");
 
-    return Value::null;
+    return NullUniValue;
 }
 
-Value dumpprivkey(const Array& params, bool fHelp)
+UniValue dumpprivkey(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
-            "dumpprivkey \"sierraaddress\"\n"
-            "\nReveals the private key corresponding to 'sierraaddress'.\n"
+            "dumpprivkey \"projectcoinaddress\"\n"
+            "\nReveals the private key corresponding to 'projectcoinaddress'.\n"
             "Then the importprivkey can be used with this output\n"
             "\nArguments:\n"
-            "1. \"sierraaddress\"   (string, required) The Sierra address for the private key\n"
+            "1. \"projectcoinaddress\"   (string, required) The projectcoin address for the private key\n"
             "\nResult:\n"
             "\"key\"                (string) The private key\n"
             "\nExamples:\n" +
@@ -325,7 +323,7 @@ Value dumpprivkey(const Array& params, bool fHelp)
     string strAddress = params[0].get_str();
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Sierra address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid ProjectCoin address");
     CKeyID keyID;
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
@@ -336,7 +334,7 @@ Value dumpprivkey(const Array& params, bool fHelp)
 }
 
 
-Value dumpwallet(const Array& params, bool fHelp)
+UniValue dumpwallet(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 1)
         throw runtime_error(
@@ -368,7 +366,7 @@ Value dumpwallet(const Array& params, bool fHelp)
     std::sort(vKeyBirth.begin(), vKeyBirth.end());
 
     // produce output
-    file << strprintf("# Wallet dump created by Sierra %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
+    file << strprintf("# Wallet dump created by ProjectCoin %s (%s)\n", CLIENT_BUILD, CLIENT_DATE);
     file << strprintf("# * Created on %s\n", EncodeDumpTime(GetTime()));
     file << strprintf("# * Best block at time of backup was %i (%s),\n", chainActive.Height(), chainActive.Tip()->GetBlockHash().ToString());
     file << strprintf("#   mined on %s\n", EncodeDumpTime(chainActive.Tip()->GetBlockTime()));
@@ -391,17 +389,17 @@ Value dumpwallet(const Array& params, bool fHelp)
     file << "\n";
     file << "# End of dump\n";
     file.close();
-    return Value::null;
+    return NullUniValue;
 }
 
-Value bip38encrypt(const Array& params, bool fHelp)
+UniValue bip38encrypt(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "bip38encrypt \"sierraaddress\"\n"
-            "\nEncrypts a private key corresponding to 'sierraaddress'.\n"
+            "bip38encrypt \"projectcoinaddress\"\n"
+            "\nEncrypts a private key corresponding to 'projectcoinaddress'.\n"
             "\nArguments:\n"
-            "1. \"sierraaddress\"   (string, required) The Sierra address for the private key (you must hold the key already)\n"
+            "1. \"projectcoinaddress\"   (string, required) The projectcoin address for the private key (you must hold the key already)\n"
             "2. \"passphrase\"   (string, required) The passphrase you want the private key to be encrypted with - Valid special chars: !#$%&'()*+,-./:;<=>?`{|}~ \n"
             "\nResult:\n"
             "\"key\"                (string) The encrypted private key\n"
@@ -414,7 +412,7 @@ Value bip38encrypt(const Array& params, bool fHelp)
 
     CBitcoinAddress address;
     if (!address.SetString(strAddress))
-        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid Sierra address");
+        throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid ProjectCoin address");
     CKeyID keyID;
     if (!address.GetKeyID(keyID))
         throw JSONRPCError(RPC_TYPE_ERROR, "Address does not refer to a key");
@@ -423,20 +421,20 @@ Value bip38encrypt(const Array& params, bool fHelp)
         throw JSONRPCError(RPC_WALLET_ERROR, "Private key for address " + strAddress + " is not known");
 
     uint256 privKey = vchSecret.GetPrivKey_256();
-    string encryptedOut = BIP38_Encrypt(strAddress, strPassphrase, privKey);
+    string encryptedOut = BIP38_Encrypt(strAddress, strPassphrase, privKey, vchSecret.IsCompressed());
 
-    Object result;
+    UniValue result(UniValue::VOBJ);
     result.push_back(Pair("Addess", strAddress));
     result.push_back(Pair("Encrypted Key", encryptedOut));
 
     return result;
 }
 
-Value bip38decrypt(const Array& params, bool fHelp)
+UniValue bip38decrypt(const UniValue& params, bool fHelp)
 {
     if (fHelp || params.size() != 2)
         throw runtime_error(
-            "bip38decrypt \"sierraaddress\"\n"
+            "bip38decrypt \"projectcoinaddress\"\n"
             "\nDecrypts and then imports password protected private key.\n"
             "\nArguments:\n"
             "1. \"passphrase\"   (string, required) The passphrase you want the private key to be encrypted with\n"
@@ -457,7 +455,7 @@ Value bip38decrypt(const Array& params, bool fHelp)
     if (!BIP38_Decrypt(strPassphrase, strKey, privKey, fCompressed))
         throw JSONRPCError(RPC_WALLET_ERROR, "Failed To Decrypt");
 
-    Object result;
+    UniValue result(UniValue::VOBJ);
     result.push_back(Pair("privatekey", HexStr(privKey)));
 
     CKey key;

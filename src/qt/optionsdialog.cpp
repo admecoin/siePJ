@@ -3,7 +3,7 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "optionsdialog.h"
@@ -11,8 +11,7 @@
 
 #include "bitcoinunits.h"
 #include "guiutil.h"
-// Removing Darksend - BJK
-// #include "Darksend.h"
+#include "obfuscation.h"
 #include "optionsmodel.h"
 
 #include "main.h" // for MAX_SCRIPTCHECK_THREADS
@@ -40,6 +39,13 @@ OptionsDialog::OptionsDialog(QWidget* parent, bool enableWallet) : QDialog(paren
 {
     ui->setupUi(this);
     GUIUtil::restoreWindowGeometry("nOptionsDialogWindow", this->size(), this);
+
+    //tmp
+    ui->percentage_label->setVisible(false);
+    ui->obfuscationRounds->setVisible(false);
+    ui->label_2->setVisible(false);
+    ui->anonymizePrj->setVisible(false);
+
 
     /* Main elements init */
     ui->databaseCache->setMinimum(nMinDbCache);
@@ -83,7 +89,6 @@ OptionsDialog::OptionsDialog(QWidget* parent, bool enableWallet) : QDialog(paren
 
     /* Theme selector static themes */
     ui->theme->addItem(QString("Default"), QVariant("default"));
-	ui->theme->addItem(QString("Dark"), QVariant("dark"));
 
     /* Theme selector external themes */
     boost::filesystem::path pathAddr = GetDataDir() / "themes";
@@ -134,6 +139,16 @@ OptionsDialog::OptionsDialog(QWidget* parent, bool enableWallet) : QDialog(paren
 
     /* setup/change UI elements when proxy IP is invalid/valid */
     connect(this, SIGNAL(proxyIpChecks(QValidatedLineEdit*, int)), this, SLOT(doProxyIpChecks(QValidatedLineEdit*, int)));
+   
+    ui->unitLabel->setVisible(false);
+    ui->unit->setVisible(false);
+    ui->digitsLabel->setVisible(false);
+    ui->digits->setVisible(false);
+    ui->thirdPartyTxUrlsLabel->setVisible(false);
+    ui->thirdPartyTxUrls->setVisible(false);
+    ui->themeLabel->setVisible(false);
+    ui->theme->setVisible(false);
+    
 }
 
 OptionsDialog::~OptionsDialog()
@@ -198,7 +213,7 @@ void OptionsDialog::setMapper()
     mapper->addMapping(ui->proxyIp, OptionsModel::ProxyIP);
     mapper->addMapping(ui->proxyPort, OptionsModel::ProxyPort);
 
-/* Window */
+    /* Window */
 #ifndef Q_OS_MAC
     mapper->addMapping(ui->minimizeToTray, OptionsModel::MinimizeToTray);
     mapper->addMapping(ui->minimizeOnClose, OptionsModel::MinimizeOnClose);
@@ -213,13 +228,12 @@ void OptionsDialog::setMapper()
     mapper->addMapping(ui->thirdPartyTxUrls, OptionsModel::ThirdPartyTxUrls);
 
 
-    /* Darksend Rounds */
-    /* Removing Darksend - BJK
-    mapper->addMapping(ui->DarksendRounds, OptionsModel::DarksendRounds);
-    mapper->addMapping(ui->anonymizeAmount, OptionsModel::AnonymizeAmount);
-    */
+    /* Obfuscation Rounds */
+    mapper->addMapping(ui->obfuscationRounds, OptionsModel::ObfuscationRounds);
+    mapper->addMapping(ui->anonymizePrj, OptionsModel::AnonymizePrjAmount);
+
+    /* Masternode Tab */
     mapper->addMapping(ui->showMasternodesTab, OptionsModel::ShowMasternodesTab);
-    
 }
 
 void OptionsDialog::enableOkButton()
@@ -259,10 +273,8 @@ void OptionsDialog::on_resetButton_clicked()
 void OptionsDialog::on_okButton_clicked()
 {
     mapper->submit();
-    /* Removing Darksend - BJK
-    DarKsendPool.cachedNumBlocks = std::numeric_limits<int>::max();
+    obfuScationPool.cachedNumBlocks = std::numeric_limits<int>::max();
     pwalletMain->MarkDirty();
-    */
     accept();
 }
 

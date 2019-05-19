@@ -1,16 +1,15 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include "transactionrecord.h"
 
 #include "base58.h"
-#include "Darksend.h"
-#include "Instantx.h"
+#include "obfuscation.h"
+#include "swifttx.h"
 #include "timedata.h"
 #include "wallet.h"
 
@@ -84,7 +83,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                 sub.credit = txout.nValue;
                 sub.involvesWatchAddress = mine & ISMINE_WATCH_ONLY;
                 if (ExtractDestination(txout.scriptPubKey, address) && IsMine(*wallet, address)) {
-                    // Received by Sierra Address
+                    // Received by ProjectCoin Address
                     sub.type = TransactionRecord::RecvWithAddress;
                     sub.address = CBitcoinAddress(address).ToString();
                 } else {
@@ -96,41 +95,6 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                     // Generated
                     sub.type = TransactionRecord::Generated;
                 }
-				
-				int nHeight = chainActive.Height();
-				int64_t nSubsidy;
-
-				if(nHeight > 0 && nHeight <= 1000) {
-					nSubsidy = 1 * COIN;
-					if(nSubsidy / 100 * 80 == txout.nValue) {
-						sub.type = TransactionRecord::MNReward;
-					}
-				} else if (nHeight > 1000 && nHeight <= 50000) {
-					nSubsidy = 25 * COIN;
-					if(nSubsidy / 100 * 80 == txout.nValue) {
-						sub.type = TransactionRecord::MNReward;
-					}
-				} else if (nHeight > 50000 && nHeight <= 100000) {
-					nSubsidy = 20 * COIN;
-					if(nSubsidy / 100 * 80 == txout.nValue) {
-						sub.type = TransactionRecord::MNReward;
-					}
-				} else if (nHeight > 100000 && nHeight <= 150000) {
-					nSubsidy = 15 * COIN;
-					if(nSubsidy / 100 * 80 == txout.nValue) {
-						sub.type = TransactionRecord::MNReward;
-					}
-				} else if (nHeight > 150000 && nHeight <= 200000) {
-					nSubsidy = 10 * COIN;
-					if(nSubsidy / 100 * 80 == txout.nValue) {
-						sub.type = TransactionRecord::MNReward;
-					}
-				} else if (nHeight > 200000) {
-					nSubsidy = 5 * COIN;
-					if(nSubsidy / 100 * 80 == txout.nValue) {
-						sub.type = TransactionRecord::MNReward;
-					}
-				}
 
                 parts.append(sub);
             }
@@ -164,7 +128,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
         }
 
         if (fAllFromMeDenom && fAllToMeDenom && nFromMe * nToMe) {
-            parts.append(TransactionRecord(hash, nTime, TransactionRecord::DarksendDenominate, "", -nDebit, nCredit));
+            parts.append(TransactionRecord(hash, nTime, TransactionRecord::ObfuscationDenominate, "", -nDebit, nCredit));
             parts.last().involvesWatchAddress = false; // maybe pass to TransactionRecord as constructor argument
         } else if (fAllFromMe && fAllToMe) {
             // Payment to self
@@ -180,7 +144,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                 sub.type = TransactionRecord::Obfuscated;
                 CTxDestination address;
                 if (ExtractDestination(wtx.vout[0].scriptPubKey, address)) {
-                    // Sent to Sierra Address
+                    // Sent to ProjectCoin Address
                     sub.address = CBitcoinAddress(address).ToString();
                 } else {
                     // Sent to IP, or other non-address transaction like OP_EVAL
@@ -191,9 +155,9 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
                     const CTxOut& txout = wtx.vout[nOut];
                     sub.idx = parts.size();
 
-                    if (wallet->IsCollateralAmount(txout.nValue)) sub.type = TransactionRecord::DarksendMakeCollaterals;
-                    if (wallet->IsDenominatedAmount(txout.nValue)) sub.type = TransactionRecord::DarksendCreateDenominations;
-                    if (nDebit - wtx.GetValueOut() == DARKSEND_COLLATERAL) sub.type = TransactionRecord::DarksendCollateralPayment;
+                    if (wallet->IsCollateralAmount(txout.nValue)) sub.type = TransactionRecord::ObfuscationMakeCollaterals;
+                    if (wallet->IsDenominatedAmount(txout.nValue)) sub.type = TransactionRecord::ObfuscationCreateDenominations;
+                    if (nDebit - wtx.GetValueOut() == OBFUSCATION_COLLATERAL) sub.type = TransactionRecord::ObfuscationCollateralPayment;
                 }
             }
 
@@ -223,7 +187,7 @@ QList<TransactionRecord> TransactionRecord::decomposeTransaction(const CWallet* 
 
                 CTxDestination address;
                 if (ExtractDestination(txout.scriptPubKey, address)) {
-                    // Sent to Sierra Address
+                    // Sent to ProjectCoin Address
                     sub.type = TransactionRecord::SendToAddress;
                     sub.address = CBitcoinAddress(address).ToString();
                 } else {

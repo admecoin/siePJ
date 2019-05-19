@@ -1,9 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -11,7 +10,7 @@
 #define BITCOIN_MAIN_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "amount.h"
@@ -53,18 +52,15 @@ class CValidationState;
 struct CBlockTemplate;
 struct CNodeStateStats;
 
-/** Masternode Amount **/
-static const int MASTERNODEAMOUNT = 10000;
-
 /** Default for -blockmaxsize and -blockminsize, which control the range of sizes the mining code will create **/
-static const unsigned int DEFAULT_BLOCK_MAX_SIZE = 3000000;
+static const unsigned int DEFAULT_BLOCK_MAX_SIZE = 750000;
 static const unsigned int DEFAULT_BLOCK_MIN_SIZE = 0;
 /** Default for -blockprioritysize, maximum space for zero/low-fee transactions **/
 static const unsigned int DEFAULT_BLOCK_PRIORITY_SIZE = 50000;
 /** Default for accepting alerts from the P2P network. */
 static const bool DEFAULT_ALERTS = true;
 /** The maximum size for transactions we're willing to relay/mine */
-static const unsigned int MAX_STANDARD_TX_SIZE = 250000;
+static const unsigned int MAX_STANDARD_TX_SIZE = 100000;
 /** The maximum allowed number of signature check operations in a block (network rule) */
 static const unsigned int MAX_BLOCK_SIGOPS = MAX_BLOCK_SIZE / 50;
 /** Maximum number of signature check operations in an IsStandard() P2SH script */
@@ -80,7 +76,7 @@ static const unsigned int BLOCKFILE_CHUNK_SIZE = 0x1000000; // 16 MiB
 /** The pre-allocation chunk size for rev?????.dat files (since 0.8) */
 static const unsigned int UNDOFILE_CHUNK_SIZE = 0x100000; // 1 MiB
 /** Coinbase transaction outputs can only be spent after this number of new blocks (network rule) */
-//static const int COINBASE_MATURITY = 110;
+static const int COINBASE_MATURITY = 100;
 /** Threshold for nLockTime: below this value it is interpreted as block number, otherwise as UNIX timestamp. */
 static const unsigned int LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 /** Maximum number of script-checking threads allowed */
@@ -106,6 +102,15 @@ static const unsigned int MAX_REJECT_MESSAGE_LENGTH = 111;
 
 /** Enable bloom filter */
  static const bool DEFAULT_PEERBLOOMFILTERS = true;
+
+ /** Default for -blockspamfilter, use header spam filter */
+static const bool DEFAULT_BLOCK_SPAM_FILTER = true;
+/** Default for -blockspamfiltermaxsize, maximum size of the list of indexes in the block spam filter */
+static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_SIZE = COINBASE_MATURITY;
+/** Default for -blockspamfiltermaxavg, maximum average size of an index occurrence in the block spam filter */
+static const unsigned int DEFAULT_BLOCK_SPAM_FILTER_MAX_AVG = 10;
+
+static const unsigned int DEFAULT_BLOCK_SPAM_START = 254100;
 
 /** "reject" message codes */
 static const unsigned char REJECT_MALFORMED = 0x01;
@@ -174,11 +179,11 @@ void RegisterNodeSignals(CNodeSignals& nodeSignals);
 /** Unregister a network node */
 void UnregisterNodeSignals(CNodeSignals& nodeSignals);
 
-/** 
+/**
  * Process an incoming block. This only returns after the best known valid
  * block is made active. Note that it does not, however, guarantee that the
  * specific block passed to it has been checked for validity!
- * 
+ *
  * @param[out]  state   This may be set to an Error state if any error occurred processing it, including during validation/connection/etc of otherwise unrelated blocks during reorganisation; or it may be set to an Invalid state if pblock is itself invalid (but this is not guaranteed even when the block is checked). If you want to *possibly* get feedback on whether pblock is valid, you must also install a CValidationInterface - this will have its BlockChecked method called whenever *any* block completes validation.
  * @param[in]   pfrom   The node which we are receiving the block from; it is added to mapBlockSource and may be penalised if the block is invalid.
  * @param[in]   pblock  The block we want to process.
@@ -199,7 +204,7 @@ bool LoadExternalBlockFile(FILE* fileIn, CDiskBlockPos* dbp = NULL);
 /** Initialize a new block tree database + block data on disk */
 bool InitBlockIndex();
 /** Load the block tree and coins database from disk */
-bool LoadBlockIndex();
+bool LoadBlockIndex(std::string& strError);
 /** Unload database information */
 void UnloadBlockIndex();
 /** See whether the protocol update is enforced for connected nodes */
@@ -232,10 +237,9 @@ bool DisconnectBlocksAndReprocess(int blocks);
 
 // ***TODO***
 double ConvertBitsToDouble(unsigned int nBits);
-int64_t GetMasternodePayment(int nHeight, int64_t blockValue, int nMasternodeCount = 0);
-unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader* pblock, bool fProofOfStake);
+int64_t GetMasternodePayment(int nHeight, unsigned mnlevel, int64_t blockValue);
 
-bool ActivateBestChain(CValidationState& state, CBlock* pblock = NULL);
+bool ActivateBestChain(CValidationState& state, CBlock* pblock = NULL, bool fAlreadyChecked = false);
 CAmount GetBlockValue(int nHeight);
 
 /** Create a new block index entry for a given block hash */
@@ -302,7 +306,7 @@ bool MoneyRange(CAmount nValueOut);
 /**
  * Check transaction inputs, and make sure any
  * pay-to-script-hash transactions are evaluating IsStandard scripts
- * 
+ *
  * Why bother? To avoid denial-of-service attacks; an attacker
  * can submit a standard HASH... OP_EQUAL transaction,
  * which will get accepted into blocks. The redemption
@@ -311,14 +315,14 @@ bool MoneyRange(CAmount nValueOut);
  *   DUP CHECKSIG DROP ... repeated 100 times... OP_1
  */
 
-/** 
+/**
  * Check for standard transaction types
  * @param[in] mapInputs    Map of previous transactions that have outputs we're spending
  * @return True if all inputs (scriptSigs) use only standard transaction forms
  */
 bool AreInputsStandard(const CTransaction& tx, const CCoinsViewCache& mapInputs);
 
-/** 
+/**
  * Count ECDSA signature operations the old-fashioned (pre-0.6) way
  * @return number of sigops this transaction's outputs will produce when spent
  * @see CTransaction::FetchInputs
@@ -327,7 +331,7 @@ unsigned int GetLegacySigOpCount(const CTransaction& tx);
 
 /**
  * Count ECDSA signature operations in pay-to-script-hash inputs.
- * 
+ *
  * @param[in] mapInputs Map of previous transactions that have outputs we're spending
  * @return maximum number of sigops required to validate this transaction's inputs
  * @see CTransaction::FetchInputs
@@ -347,7 +351,7 @@ void UpdateCoins(const CTransaction& tx, CValidationState& state, CCoinsViewCach
 
 /** Context-independent validity checks */
 bool CheckTransaction(const CTransaction& tx, CValidationState& state);
-bool CheckTransactionReactor(const CTransaction& tx, CValidationState& state);
+
 /**
  * Check if transaction will be final in the next block to be created.
  *
@@ -383,9 +387,9 @@ public:
 };
 
 
-/** 
+/**
  * Closure representing one script verification
- * Note that this stores references to the spending transaction 
+ * Note that this stores references to the spending transaction
  */
 class CScriptCheck
 {
@@ -436,7 +440,7 @@ bool DisconnectBlock(CBlock& block, CValidationState& state, CBlockIndex* pindex
 bool DisconnectBlocksAndReprocess(int blocks);
 
 /** Apply the effects of this block (with given index) on the UTXO set represented by coins */
-bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& coins, bool fJustCheck = false);
+bool ConnectBlock(const CBlock& block, CValidationState& state, CBlockIndex* pindex, CCoinsViewCache& coins, bool fJustCheck, bool fAlreadyChecked = false);
 
 /** Context-independent validity checks */
 bool CheckBlockHeader(const CBlockHeader& block, CValidationState& state, bool fCheckPOW = true);
@@ -451,7 +455,7 @@ bool ContextualCheckBlock(const CBlock& block, CValidationState& state, CBlockIn
 bool TestBlockValidity(CValidationState& state, const CBlock& block, CBlockIndex* pindexPrev, bool fCheckPOW = true, bool fCheckMerkleRoot = true);
 
 /** Store block on disk. If dbp is provided, the file is known to already reside on disk */
-bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pindex, CDiskBlockPos* dbp = NULL);
+bool AcceptBlock(CBlock& block, CValidationState& state, CBlockIndex** pindex, CDiskBlockPos* dbp = NULL, bool fAlreadyCheckedBlock = false);
 bool AcceptBlockHeader(const CBlockHeader& block, CValidationState& state, CBlockIndex** ppindex = NULL);
 
 

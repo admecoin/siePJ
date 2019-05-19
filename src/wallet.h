@@ -1,9 +1,8 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -24,7 +23,7 @@
 #include "validationinterface.h"
 #include "wallet_ismine.h"
 #include "walletdb.h"
-#include "chainparams.h"
+#include "masternode.h"
 
 #include <algorithm>
 #include <map>
@@ -65,20 +64,18 @@ class CWalletTx;
 
 /** (client) version numbers for particular wallet features */
 enum WalletFeature {
-    FEATURE_BASE = 10500, // the earliest version new wallets supports (only useful for getinfo's clientversion output)
+    FEATURE_BASE = 1000000, // the earliest version new wallets supports
 
-    FEATURE_WALLETCRYPT = 40000, // wallet encryption
-    FEATURE_COMPRPUBKEY = 60000, // compressed public keys
-
-    FEATURE_LATEST = 61000
+    FEATURE_LATEST = 1000000
 };
 
 enum AvailableCoinsType {
     ALL_COINS = 1,
     ONLY_DENOMINATED = 2,
-    ONLY_NOT10000IFMN = 3,
-    ONLY_NONDENOMINATED_NOT10000IFMN = 4, // ONLY_NONDENOMINATED and not 1000 SIERRA at the same time
-    ONLY_10000 = 5                        // find masternode outputs including locked ones (use with caution)
+    ONLY_NOTDEPOSITIFMN = 3,
+    ONLY_NONDENOMINATED_NOTDEPOSITIFMN = 4, // ONLY_NONDENOMINATED and not deposit ProjectCoin at the same time
+    ONLY_DEPOSIT = 5,                       // find masternode outputs including locked ones (use with caution)
+    STAKABLE_COINS = 6                      // UTXO's that are valid for staking
 };
 
 struct CompactTallyItem {
@@ -129,7 +126,7 @@ public:
     StringMap destdata;
 };
 
-/** 
+/**
  * A CWallet is an extension of a keystore, which also maintains a set of transactions and balances,
  * and provides the ability to create new transactions.
  */
@@ -164,15 +161,15 @@ private:
 
 public:
     bool MintableCoins();
-    bool SelectStakeCoins(std::set<std::pair<const CWalletTx*, unsigned int> >& setCoins, int64_t nTargetAmount) const;
-    bool SelectCoinsDark(int64_t nValueMin, int64_t nValueMax, std::vector<CTxIn>& setCoinsRet, int64_t& nValueRet, int nDarksendRoundsMin, int nDarksendRoundsMax) const;
-    bool SelectCoinsByDenominations(int nDenom, int64_t nValueMin, int64_t nValueMax, std::vector<CTxIn>& vCoinsRet, std::vector<COutput>& vCoinsRet2, int64_t& nValueRet, int nDarksendRoundsMin, int nDarksendRoundsMax);
-    bool SelectCoinsDarkDenominated(int64_t nTargetValue, std::vector<CTxIn>& setCoinsRet, int64_t& nValueRet) const;
+    bool SelectStakeCoins(std::set<std::pair<const CWalletTx*, unsigned int> >& setCoins, CAmount nTargetAmount) const;
+    bool SelectCoinsDark(CAmount nValueMin, CAmount nValueMax, std::vector<CTxIn>& setCoinsRet, CAmount& nValueRet, int nObfuscationRoundsMin, int nObfuscationRoundsMax) const;
+    bool SelectCoinsByDenominations(int nDenom, CAmount nValueMin, CAmount nValueMax, std::vector<CTxIn>& vCoinsRet, std::vector<COutput>& vCoinsRet2, CAmount& nValueRet, int nObfuscationRoundsMin, int nObfuscationRoundsMax);
+    bool SelectCoinsDarkDenominated(CAmount nTargetValue, std::vector<CTxIn>& setCoinsRet, CAmount& nValueRet) const;
     bool HasCollateralInputs(bool fOnlyConfirmed = true) const;
-    bool IsCollateralAmount(int64_t nInputAmount) const;
-    int CountInputsWithAmount(int64_t nInputAmount);
+    bool IsCollateralAmount(CAmount nInputAmount) const;
+    int CountInputsWithAmount(CAmount nInputAmount);
 
-    bool SelectCoinsCollateral(std::vector<CTxIn>& setCoinsRet, int64_t& nValueRet) const;
+    bool SelectCoinsCollateral(std::vector<CTxIn>& setCoinsRet, CAmount& nValueRet) const;
 
     /*
      * Main wallet lock.
@@ -212,7 +209,6 @@ public:
     //Auto Combine Inputs
     bool fCombineDust;
     CAmount nAutoCombineThreshold;
-	int nAutoCombineThresholdTime;
 
     CWallet()
     {
@@ -247,7 +243,7 @@ public:
 
         // Stake Settings
         nHashDrift = 45;
-        nStakeSplitThreshold = 30;
+        nStakeSplitThreshold = 500;
         nHashInterval = 22;
         nStakeSetUpdateTime = 300; // 5 minutes
 
@@ -263,7 +259,6 @@ public:
         //Auto Combine Dust
         fCombineDust = false;
         nAutoCombineThreshold = 0;
-		nAutoCombineThresholdTime = 15; //In minutes
     }
 
     bool isMultiSendEnabled()
@@ -315,7 +310,7 @@ public:
     void UnlockCoin(COutPoint& output);
     void UnlockAllCoins();
     void ListLockedCoins(std::vector<COutPoint>& vOutpts);
-    int64_t GetTotalValue(std::vector<CTxIn> vCoins);
+    CAmount GetTotalValue(std::vector<CTxIn> vCoins);
 
     //  keystore implementation
     // Generate a new key
@@ -358,13 +353,19 @@ public:
     //! Adds a watch-only address to the store, without saving it to disk (used by LoadWallet)
     bool LoadWatchOnly(const CScript& dest);
 
+    //! Adds a MultiSig address to the store, and saves it to disk.
+    bool AddMultiSig(const CScript& dest);
+    bool RemoveMultiSig(const CScript& dest);
+    //! Adds a MultiSig address to the store, without saving it to disk (used by LoadWallet)
+    bool LoadMultiSig(const CScript& dest);
+
     bool Unlock(const SecureString& strWalletPassphrase, bool anonimizeOnly = false);
     bool ChangeWalletPassphrase(const SecureString& strOldWalletPassphrase, const SecureString& strNewWalletPassphrase);
     bool EncryptWallet(const SecureString& strWalletPassphrase);
 
     void GetKeyBirthTimes(std::map<CKeyID, int64_t>& mapKeyBirth) const;
 
-    /** 
+    /**
      * Increment the next transaction order id
      * @return next transaction order id
      */
@@ -410,8 +411,8 @@ public:
         CAmount nFeePay = 0);
     bool CreateTransaction(CScript scriptPubKey, const CAmount& nValue, CWalletTx& wtxNew, CReserveKey& reservekey, CAmount& nFeeRet, std::string& strFailReason, const CCoinControl* coinControl = NULL, AvailableCoinsType coin_type = ALL_COINS, bool useIX = false, CAmount nFeePay = 0);
     bool CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, std::string strCommand = "tx");
-    std::string PrepareDarksendDenominate(int minRounds, int maxRounds);
-    int GenerateDarksendOutputs(int nTotalValue, std::vector<CTxOut>& vout);
+    std::string PrepareObfuscationDenominate(int minRounds, int maxRounds);
+    int GenerateObfuscationOutputs(int nTotalValue, std::vector<CTxOut>& vout);
     bool CreateCollateralTransaction(CMutableTransaction& txCollateral, std::string& strReason);
     bool ConvertList(std::vector<CTxIn> vCoins, std::vector<int64_t>& vecAmounts);
     bool CreateCoinStake(const CKeyStore& keystore, unsigned int nBits, int64_t nSearchInterval, CMutableTransaction& txNew, unsigned int& nTxNewTime);
@@ -435,18 +436,15 @@ public:
 
     std::set<CTxDestination> GetAccountAddresses(std::string strAccount) const;
 
-    bool GetBudgetSystemCollateralTX(CTransaction& tx, uint256 hash, bool useIX);
-    bool GetBudgetSystemCollateralTX(CWalletTx& tx, uint256 hash, bool useIX);
-
-    // get the Darksend chain depth for a given input
-    int GetRealInputDarksendRounds(CTxIn in, int rounds) const;
+    // get the Obfuscation chain depth for a given input
+    int GetRealInputObfuscationRounds(CTxIn in, int rounds) const;
     // respect current settings
-    int GetInputDarksendRounds(CTxIn in) const;
+    int GetInputObfuscationRounds(CTxIn in) const;
 
     bool IsDenominated(const CTxIn& txin) const;
     bool IsDenominated(const CTransaction& tx) const;
 
-    bool IsDenominatedAmount(int64_t nInputAmount) const;
+    bool IsDenominatedAmount(CAmount nInputAmount) const;
 
     isminetype IsMine(const CTxIn& txin) const;
     CAmount GetDebit(const CTxIn& txin, const isminefilter& filter) const;
@@ -554,13 +552,13 @@ public:
     //! Get wallet transactions that conflict with given transaction (spend same outputs)
     std::set<uint256> GetConflicts(const uint256& txid) const;
 
-    /** 
+    /**
      * Address book entry changed.
      * @note called with lock cs_wallet held.
      */
     boost::signals2::signal<void(CWallet* wallet, const CTxDestination& address, const std::string& label, bool isMine, const std::string& purpose, ChangeType status)> NotifyAddressBookChanged;
 
-    /** 
+    /**
      * Wallet transaction added, removed or updated.
      * @note called with lock cs_wallet held.
      */
@@ -571,7 +569,11 @@ public:
 
     /** Watch-only address added */
     boost::signals2::signal<void(bool fHaveWatchOnly)> NotifyWatchonlyChanged;
+
+    /** MultiSig address added */
+    boost::signals2::signal<void(bool fHaveMultiSig)> NotifyMultiSigChanged;
 };
+
 
 /** A key allocated from the key pool. */
 class CReserveKey
@@ -695,7 +697,7 @@ public:
     bool IsTransactionLockTimedOut() const;
 };
 
-/** 
+/**
  * A transaction with a bunch of additional info that only the owner cares about.
  * It includes any unrecorded transactions needed to link it back to the block chain.
  */
@@ -901,7 +903,7 @@ public:
         if (IsCoinBase() && GetBlocksToMaturity() > 0)
             return 0;
 
-        int64_t credit = 0;
+        CAmount credit = 0;
         if (filter & ISMINE_SPENDABLE) {
             // GetBalance can assume transactions in mapWallet won't change
             if (fCreditCached)
@@ -984,10 +986,11 @@ public:
             const CTxIn vin = CTxIn(hashTx, i);
 
             if (pwallet->IsSpent(hashTx, i) || pwallet->IsLockedCoin(hashTx, i)) continue;
-            if (fMasterNode && vout[i].nValue == Params().MasternodeColleteralLimxDev() * COIN) continue; // do not count MN-like outputs
+            if (fMasterNode && CMasternode::IsDepositCoins(vout[i].nValue))
+                continue; // do not count MN-like outputs
 
-            const int rounds = pwallet->GetInputDarksendRounds(vin);
-            if (rounds >= -2 && rounds < nDarksendRounds) {
+            const int rounds = pwallet->GetInputObfuscationRounds(vin);
+            if (rounds >= -2 && rounds < nObfuscationRounds) {
                 nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
                 if (!MoneyRange(nCredit))
                     throw std::runtime_error("CWalletTx::GetAnonamizableCredit() : value out of range");
@@ -1019,8 +1022,8 @@ public:
 
             if (pwallet->IsSpent(hashTx, i) || !pwallet->IsDenominated(vin)) continue;
 
-            const int rounds = pwallet->GetInputDarksendRounds(vin);
-            if (rounds >= nDarksendRounds) {
+            const int rounds = pwallet->GetInputObfuscationRounds(vin);
+            if (rounds >= nObfuscationRounds) {
                 nCredit += pwallet->GetCredit(txout, ISMINE_SPENDABLE);
                 if (!MoneyRange(nCredit))
                     throw std::runtime_error("CWalletTx::GetAnonymizedCredit() : value out of range");
@@ -1170,7 +1173,6 @@ public:
 
     int64_t GetTxTime() const;
     int GetRequestCount() const;
-
     void RelayWalletTransaction(std::string strCommand = "tx");
 
     std::set<uint256> GetConflicts() const;
@@ -1193,10 +1195,10 @@ public:
         fSpendable = fSpendableIn;
     }
 
-    //Used with Darksend. Will return largest nondenom, then denominations, then very small inputs
+    //Used with Obfuscation. Will return largest nondenom, then denominations, then very small inputs
     int Priority() const
     {
-        BOOST_FOREACH (int64_t d, DarKsendDenominations)
+        BOOST_FOREACH (CAmount d, obfuScationDenominations)
             if (tx->vout[i].nValue == d) return 10000;
         if (tx->vout[i].nValue < 1 * COIN) return 20000;
 
@@ -1241,7 +1243,7 @@ public:
 };
 
 
-/** 
+/**
  * Account information.
  * Stored in wallet with key "acc"+string account name.
  */
@@ -1272,7 +1274,7 @@ public:
 };
 
 
-/** 
+/**
  * Internal transfers.
  * Database key is acentry<account><counter>.
  */

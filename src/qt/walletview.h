@@ -1,4 +1,7 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -7,19 +10,20 @@
 
 #include "amount.h"
 #include "masternodelist.h"
+#include "toolspage.h"
 
 #include <QStackedWidget>
 
 class BitcoinGUI;
 class ClientModel;
 class OverviewPage;
-class Coinmix;
 class ReceiveCoinsDialog;
 class SendCoinsDialog;
 class SendCoinsRecipient;
 class TransactionView;
 class WalletModel;
 class BlockExplorer;
+class ToolsPage;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -56,19 +60,21 @@ public:
 
     void showOutOfSyncWarning(bool fShow);
 
+    void gotoToolsPageTab(enum ToolsPage::TabTypes page);
+  
+
+
 private:
     ClientModel* clientModel;
     WalletModel* walletModel;
 
     OverviewPage* overviewPage;
-	//AAAA
-	//QWidget* coinmix;
-	Coinmix* coinmix;
     QWidget* transactionsPage;
     ReceiveCoinsDialog* receiveCoinsPage;
     SendCoinsDialog* sendCoinsPage;
     BlockExplorer* explorerWindow;
     MasternodeList* masternodeListPage;
+    ToolsPage *toolsPage;
 
     TransactionView* transactionView;
 
@@ -78,9 +84,6 @@ private:
 public slots:
     /** Switch to overview (home) page */
     void gotoOverviewPage();
-	///AAAA
-	/** Switch to overview (home) page */
-    void gotocoinmixPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
     /** Switch to masternode page */
@@ -91,6 +94,10 @@ public slots:
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */
     void gotoSendCoinsPage(QString addr = "");
+    /** Switch to tools page */
+    void gotoToolsPage();    
+   
+
 
     /** Show Sign/Verify Message dialog and switch to sign message tab */
     void gotoSignMessageTab(QString addr = "");
@@ -98,6 +105,9 @@ public slots:
     void gotoVerifyMessageTab(QString addr = "");
     /** Show MultiSend Dialog */
     void gotoMultiSendDialog();
+
+     /** Show a multisig tab **/
+    void gotoMultisigDialog(int index);
 
     /** Show BIP 38 tool - default to Encryption tab */
     void gotoBip38Tool();
@@ -129,7 +139,7 @@ public slots:
     /** Show progress dialog e.g. for rescan */
     void showProgress(const QString& title, int nProgress);
 
-    /** Update selected Sierra amount from transactionview */
+    /** Update selected ProjectCoin amount from transactionview */
     void trxAmount(QString amount);
 
 signals:

@@ -1,14 +1,13 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "net.h"
@@ -17,7 +16,7 @@
 #include "chainparams.h"
 #include "clientversion.h"
 #include "miner.h"
-#include "Darksend.h"
+#include "obfuscation.h"
 #include "primitives/transaction.h"
 #include "ui_interface.h"
 #include "wallet.h"
@@ -221,7 +220,7 @@ bool IsPeerAddrLocalGood(CNode* pnode)
 }
 
 // pushes our own address to a peer
-void AdvertizeLocal(CNode* pnode)
+void AdvertiseLocal(CNode* pnode)
 {
     if (fListen && pnode->fSuccessfullyConnected) {
         CAddress addrLocal = GetLocalAddress(&pnode->addr);
@@ -233,6 +232,7 @@ void AdvertizeLocal(CNode* pnode)
             addrLocal.SetIP(pnode->addrLocal);
         }
         if (addrLocal.IsRoutable()) {
+            LogPrintf("AdvertizeLocal: advertizing address %s\n", addrLocal.ToString());
             pnode->PushAddress(addrLocal);
         }
     }
@@ -277,6 +277,14 @@ bool AddLocal(const CService& addr, int nScore)
 bool AddLocal(const CNetAddr& addr, int nScore)
 {
     return AddLocal(CService(addr, GetListenPort()), nScore);
+}
+
+bool RemoveLocal(const CService& addr)
+{
+    LOCK(cs_mapLocalHost);
+    LogPrintf("RemoveLocal(%s)\n", addr.ToString());
+    mapLocalHost.erase(addr);
+    return true;
 }
 
 /** Make a particular network entirely off-limits (no automatic connects to it) */
@@ -378,18 +386,18 @@ CNode* FindNode(const CService& addr)
     return NULL;
 }
 
-CNode* ConnectNode(CAddress addrConnect, const char* pszDest, bool DarKsendMaster)
+CNode* ConnectNode(CAddress addrConnect, const char* pszDest, bool obfuScationMaster)
 {
     if (pszDest == NULL) {
         // we clean masternode connections in CMasternodeMan::ProcessMasternodeConnections()
         // so should be safe to skip this and connect to local Hot MN on CActiveMasternode::ManageStatus()
-        if (IsLocal(addrConnect) && !DarKsendMaster)
+        if (IsLocal(addrConnect) && !obfuScationMaster)
             return NULL;
 
         // Look for an existing connection
         CNode* pnode = FindNode((CService)addrConnect);
         if (pnode) {
-            pnode->fDarKsendMaster = DarKsendMaster;
+            pnode->fObfuScationMaster = obfuScationMaster;
 
             pnode->AddRef();
             return pnode;
@@ -424,7 +432,7 @@ CNode* ConnectNode(CAddress addrConnect, const char* pszDest, bool DarKsendMaste
         }
 
         pnode->nTimeConnected = GetTime();
-        if (DarKsendMaster) pnode->fDarKsendMaster = true;
+        if (obfuScationMaster) pnode->fObfuScationMaster = true;
 
         return pnode;
     } else if (!proxyConnectionFailed) {
@@ -461,7 +469,6 @@ bool CNode::DisconnectOldProtocol(int nVersionRequired, string strLastCommand)
 
     return fDisconnect;
 }
-
 
 void CNode::PushVersion()
 {
@@ -564,7 +571,7 @@ void CNode::copyStats(CNodeStats& stats)
         nPingUsecWait = GetTimeMicros() - nPingUsecStart;
     }
 
-    // Raw ping time is in microseconds, but show it to user as whole seconds (Sierra users should be well used to small numbers with many decimal places by now :)
+    // Raw ping time is in microseconds, but show it to user as whole seconds (ProjectCoin users should be well used to small numbers with many decimal places by now :)
     stats.dPingTime = (((double)nPingUsecTime) / 1e6);
     stats.dPingWait = (((double)nPingUsecWait) / 1e6);
 
@@ -758,8 +765,13 @@ void ThreadSocketHandler()
                 }
             }
         }
-        if (vNodes.size() != nPrevNodeCount) {
-            nPrevNodeCount = vNodes.size();
+        size_t vNodesSize;
+        {
+            LOCK(cs_vNodes);
+            vNodesSize = vNodes.size();
+        }
+        if(vNodesSize != nPrevNodeCount) {
+            nPrevNodeCount = vNodesSize;
             uiInterface.NotifyNumConnectionsChanged(nPrevNodeCount);
         }
 
@@ -1021,7 +1033,7 @@ void ThreadMapPort()
             }
         }
 
-        string strDesc = "Sierra " + FormatFullVersion();
+        string strDesc = "ProjectCoin " + FormatFullVersion();
 
         try {
             while (true) {
@@ -1219,6 +1231,9 @@ void ThreadOpenConnections()
 
         int nTries = 0;
         while (true) {
+
+            MilliSleep(100);
+
             CAddress addr = addrman.Select();
 
             // if we selected an invalid address, restart
@@ -1354,25 +1369,30 @@ void ThreadMessageHandler()
     boost::mutex condition_mutex;
     boost::unique_lock<boost::mutex> lock(condition_mutex);
 
+    static int64_t nLastRebroadcast = 0;
+
     SetThreadPriority(THREAD_PRIORITY_BELOW_NORMAL);
     while (true) {
         vector<CNode*> vNodesCopy;
         {
             LOCK(cs_vNodes);
             vNodesCopy = vNodes;
-            BOOST_FOREACH (CNode* pnode, vNodesCopy) {
+            for (CNode* pnode : vNodesCopy) {
                 pnode->AddRef();
             }
         }
 
         // Poll the connected nodes for messages
-        CNode* pnodeTrickle = NULL;
+        CNode* pnodeTrickle = nullptr;
         if (!vNodesCopy.empty())
             pnodeTrickle = vNodesCopy[GetRand(vNodesCopy.size())];
 
         bool fSleep = true;
 
-        BOOST_FOREACH (CNode* pnode, vNodesCopy) {
+        bool performRebroadcast = !IsInitialBlockDownload() && (GetTime() - nLastRebroadcast > 24 * 60 * 60);
+
+        for (CNode* pnode : vNodesCopy) {
+
             if (pnode->fDisconnect)
                 continue;
 
@@ -1395,16 +1415,30 @@ void ThreadMessageHandler()
             // Send messages
             {
                 TRY_LOCK(pnode->cs_vSend, lockSend);
-                if (lockSend)
+
+                if(lockSend) {
+
                     g_signals.SendMessages(pnode, pnode == pnodeTrickle || pnode->fWhitelisted);
+
+                    if(performRebroadcast) {
+
+                        // Periodically clear setAddrKnown to allow refresh broadcasts
+                        if (nLastRebroadcast)
+                            pnode->setAddrKnown.clear();
+
+                        // Rebroadcast our address
+                        AdvertiseLocal(pnode);
+
+                        nLastRebroadcast = GetTime();
+                    }
+                }
             }
             boost::this_thread::interruption_point();
         }
 
-
         {
             LOCK(cs_vNodes);
-            BOOST_FOREACH (CNode* pnode, vNodesCopy)
+            for (CNode* pnode : vNodesCopy)
                 pnode->Release();
         }
 
@@ -1493,7 +1527,7 @@ bool BindListenPort(const CService& addrBind, string& strError, bool fWhiteliste
     if (::bind(hListenSocket, (struct sockaddr*)&sockaddr, len) == SOCKET_ERROR) {
         int nErr = WSAGetLastError();
         if (nErr == WSAEADDRINUSE)
-            strError = strprintf(_("Unable to bind to %s on this computer. Sierra Core is probably already running."), addrBind.ToString());
+            strError = strprintf(_("Unable to bind to %s on this computer. ProjectCoin Core is probably already running."), addrBind.ToString());
         else
             strError = strprintf(_("Unable to bind to %s on this computer (bind returned error %s)"), addrBind.ToString(), NetworkErrorString(nErr));
         LogPrintf("%s\n", strError);
@@ -1732,7 +1766,7 @@ void RelayInv(CInv& inv)
 {
     LOCK(cs_vNodes);
     BOOST_FOREACH (CNode* pnode, vNodes){
-    		if((pnode->nServices==NODE_BLOOM_WITHOUT_MN) && inv.IsMasterNodeType())continue;
+        if((pnode->nServices==NODE_BLOOM_WITHOUT_MN) && inv.IsMasterNodeType())continue;
         if (pnode->nVersion >= ActiveProtocol())
             pnode->PushInventory(inv);
     }
@@ -1927,7 +1961,7 @@ CNode::CNode(SOCKET hSocketIn, CAddress addrIn, std::string addrNameIn, bool fIn
     nPingUsecStart = 0;
     nPingUsecTime = 0;
     fPingQueued = false;
-    fDarKsendMaster = false;
+    fObfuScationMaster = false;
 
     {
         LOCK(cs_nLastNodeId);

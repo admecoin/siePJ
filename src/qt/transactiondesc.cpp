@@ -1,8 +1,6 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -39,35 +37,35 @@ QString TransactionDesc::FormatTxStatus(const CWalletTx& wtx)
         int signatures = wtx.GetTransactionLockSignatures();
         QString strUsingIX = "";
         if (signatures >= 0) {
-            if (signatures >= INSTANTX_SIGNATURES_REQUIRED) {
+            if (signatures >= SWIFTTX_SIGNATURES_REQUIRED) {
                 int nDepth = wtx.GetDepthInMainChain();
                 if (nDepth < 0)
                     return tr("conflicted");
                 else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
-                    return tr("%1/offline (verified via Instantx)").arg(nDepth);
+                    return tr("%1/offline (verified via SwiftX)").arg(nDepth);
                 else if (nDepth < 6)
-                    return tr("%1/confirmed (verified via Instantx)").arg(nDepth);
+                    return tr("%1/confirmed (verified via SwiftX)").arg(nDepth);
                 else
-                    return tr("%1 confirmations (verified via Instantx)").arg(nDepth);
+                    return tr("%1 confirmations (verified via SwiftX)").arg(nDepth);
             } else {
                 if (!wtx.IsTransactionLockTimedOut()) {
                     int nDepth = wtx.GetDepthInMainChain();
                     if (nDepth < 0)
                         return tr("conflicted");
                     else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
-                        return tr("%1/offline (InstantX verification in progress - %2 of %3 signatures)").arg(nDepth).arg(signatures).arg(INSTANTX_SIGNATURES_TOTAL);
+                        return tr("%1/offline (SwiftX verification in progress - %2 of %3 signatures)").arg(nDepth).arg(signatures).arg(SWIFTTX_SIGNATURES_TOTAL);
                     else if (nDepth < 6)
-                        return tr("%1/confirmed (InstantX verification in progress - %2 of %3 signatures )").arg(nDepth).arg(signatures).arg(INSTANTX_SIGNATURES_TOTAL);
+                        return tr("%1/confirmed (SwiftX verification in progress - %2 of %3 signatures )").arg(nDepth).arg(signatures).arg(SWIFTTX_SIGNATURES_TOTAL);
                     else
-                        return tr("%1 confirmations (InstantX verification in progress - %2 of %3 signatures)").arg(nDepth).arg(signatures).arg(INSTANTX_SIGNATURES_TOTAL);
+                        return tr("%1 confirmations (SwiftX verification in progress - %2 of %3 signatures)").arg(nDepth).arg(signatures).arg(SWIFTTX_SIGNATURES_TOTAL);
                 } else {
                     int nDepth = wtx.GetDepthInMainChain();
                     if (nDepth < 0)
                         return tr("conflicted");
                     else if (GetAdjustedTime() - wtx.nTimeReceived > 2 * 60 && wtx.GetRequestCount() == 0)
-                        return tr("%1/offline (InstantX verification failed)").arg(nDepth);
+                        return tr("%1/offline (SwiftX verification failed)").arg(nDepth);
                     else if (nDepth < 6)
-                        return tr("%1/confirmed (InstantX verification failed)").arg(nDepth);
+                        return tr("%1/confirmed (SwiftX verification failed)").arg(nDepth);
                     else
                         return tr("%1 confirmations").arg(nDepth);
                 }
@@ -258,7 +256,7 @@ QString TransactionDesc::toHTML(CWallet* wallet, CWalletTx& wtx, TransactionReco
     strHTML += "<b>" + tr("Transaction ID") + ":</b> " + rec->getTxID() + "<br>";
     strHTML += "<b>" + tr("Output index") + ":</b> " + QString::number(rec->getOutputIndex()) + "<br>";
 
-    // Message from normal SIERRA:URI (SIERRA:XyZ...?message=example)
+    // Message from normal projectcoin:URI (projectcoin:XyZ...?message=example)
     foreach (const PAIRTYPE(string, string) & r, wtx.vOrderForm)
         if (r.first == "Message")
             strHTML += "<br><b>" + tr("Message") + ":</b><br>" + GUIUtil::HtmlEscape(r.second, true) + "<br>";

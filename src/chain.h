@@ -1,5 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -239,6 +241,7 @@ public:
         }
     }
 
+
     CDiskBlockPos GetBlockPos() const
     {
         CDiskBlockPos ret;
@@ -344,7 +347,7 @@ public:
 
     /**
      * Returns true if there are nRequired or more blocks of minVersion or above
-     * in the last Params().ToCheckBlockUpgradeMajority() blocks, starting at pstart 
+     * in the last Params().ToCheckBlockUpgradeMajority() blocks, starting at pstart
      * and going backwards.
      */
     static bool IsSuperMajority(int minVersion, const CBlockIndex* pstart, unsigned int nRequired);
@@ -499,6 +502,13 @@ public:
         }
         return pindex;
     }
+
+    /**
+     * Return average network hashes per second based on the last 'lookup' blocks,
+     * or from the last difficulty change if 'lookup' is nonpositive.
+     * If 'height' is nonnegative, compute the estimate at the time when a given block was found.
+     */
+    int64_t GetNetworkHashPS(int lookup, int height);
 
     /** Returns the index entry at a particular height in this chain, or NULL if no such height exists. */
     CBlockIndex* operator[](int nHeight) const

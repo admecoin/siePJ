@@ -1,7 +1,5 @@
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -16,7 +14,6 @@
 #include "sync.h"
 #include "util.h"
 
-#define MASTERNODES_DUMP_SECONDS (15 * 60)
 #define MASTERNODES_DSEG_SECONDS (3 * 60 * 60)
 
 using namespace std;
@@ -67,6 +64,10 @@ private:
     std::map<CNetAddr, int64_t> mWeAskedForMasternodeList;
     // which Masternodes we've asked for
     std::map<COutPoint, int64_t> mWeAskedForMasternodeListEntry;
+    // who's asked for the winning Masternode list and the last time
+    std::map<CNetAddr, int64_t> mAskedUsForWinnerMasternodeList;
+    // who we asked for the winning Masternode list and the last time
+    std::map<CNetAddr, int64_t> mWeAskedForWinnerMasternodeList;
 
 public:
     // Keep track of all broadcasts I've seen
@@ -74,7 +75,7 @@ public:
     // Keep track of all pings I've seen
     map<uint256, CMasternodePing> mapSeenMasternodePing;
 
-    // keep track of dsq count to prevent masternodes from gaming Darksend queue
+    // keep track of dsq count to prevent masternodes from gaming obfuscation queue
     int64_t nDsqCount;
 
     ADD_SERIALIZE_METHODS;
@@ -87,6 +88,8 @@ public:
         READWRITE(mAskedUsForMasternodeList);
         READWRITE(mWeAskedForMasternodeList);
         READWRITE(mWeAskedForMasternodeListEntry);
+        READWRITE(mAskedUsForWinnerMasternodeList);
+        READWRITE(mWeAskedForWinnerMasternodeList);
         READWRITE(nDsqCount);
 
         READWRITE(mapSeenMasternodeBroadcast);
@@ -96,8 +99,13 @@ public:
     CMasternodeMan();
     CMasternodeMan(CMasternodeMan& other);
 
+    static CValidationState GetInputCheckingTx(const CTxIn& vin, CMutableTransaction&);
+
     /// Add an entry
-    bool Add(CMasternode& mn);
+    bool Add(const CMasternode& mn);
+
+    ///return all MN's
+    std::vector<CMasternode> GetFullMasternodeMap();
 
     /// Ask (source) node for mnb
     void AskForMN(CNode* pnode, CTxIn& vin);
@@ -111,23 +119,28 @@ public:
     /// Clear Masternode vector
     void Clear();
 
-    int CountEnabled(int protocolVersion = -1);
+    unsigned CountEnabled(unsigned mnlevel = CMasternode::LevelValue::UNSPECIFIED, int protocolVersion = -1);
+    std::map<unsigned, int> CountEnabledByLevels(int protocolVersion = -1);
 
-    void DsegUpdate(CNode* pnode);
+    void CountNetworks(int protocolVersion, int& ipv4, int& ipv6, int& onion);
+
+    bool DsegUpdate(CNode* pnode);
+    bool WinnersUpdate(CNode* node);
 
     /// Find an entry
     CMasternode* Find(const CScript& payee);
     CMasternode* Find(const CTxIn& vin);
     CMasternode* Find(const CPubKey& pubKeyMasternode);
+    CMasternode* Find(const CService& service);
 
     /// Find an entry in the masternode list that is next to be paid
-    CMasternode* GetNextMasternodeInQueueForPayment(int nBlockHeight, bool fFilterSigTime, int& nCount);
+    CMasternode* GetNextMasternodeInQueueForPayment(int nBlockHeight, unsigned mnlevel, bool fFilterSigTime, unsigned& nCount);
 
     /// Find a random entry
-    CMasternode* FindRandomNotInVec(std::vector<CTxIn>& vecToExclude, int protocolVersion = -1);
+    CMasternode* FindRandomNotInVec(unsigned mnlevel, std::vector<CTxIn>& vecToExclude, int protocolVersion = -1);
 
     /// Get the current winner for this block
-    CMasternode* GetCurrentMasterNode(int mod = 1, int64_t nBlockHeight = 0, int minProtocol = 0);
+    CMasternode* GetCurrentMasterNode(unsigned mnlevel, int mod = 1, int64_t nBlockHeight = 0, int minProtocol = 0);
 
     std::vector<CMasternode> GetFullMasternodeVector()
     {
@@ -145,8 +158,10 @@ public:
 
     /// Return the number of (unique) Masternodes
     int size() { return vMasternodes.size(); }
-	/// Return the number of Masternodes older than (default) 8000 seconds
-    int stable_size ();
+    int size(unsigned mnlevel);
+
+    /// Return the number of Masternodes older than (default) 8000 seconds
+    int stable_size(unsigned mnlevel = CMasternode::LevelValue::UNSPECIFIED);
 
     std::string ToString() const;
 

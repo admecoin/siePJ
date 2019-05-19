@@ -1,5 +1,7 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2014 The Bitcoin developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -28,7 +30,7 @@ std::string COutPoint::ToStringShort() const
 
 uint256 COutPoint::GetHash()
 {
-    return Hash(BEGIN(hash), END(hash), BEGIN(n), END(n));
+    return HashS(BEGIN(hash), END(hash), BEGIN(n), END(n));
 }
 
 CTxIn::CTxIn(COutPoint prevoutIn, CScript scriptSigIn, uint32_t nSequenceIn)
@@ -77,7 +79,7 @@ bool COutPoint::IsMasternodeReward(const CTransaction* tx) const
 
 uint256 CTxOut::GetHash() const
 {
-    return SerializeHash(*this);
+    return SerializeHashS(*this);
 }
 
 std::string CTxOut::ToString() const
@@ -90,7 +92,7 @@ CMutableTransaction::CMutableTransaction(const CTransaction& tx) : nVersion(tx.n
 
 uint256 CMutableTransaction::GetHash() const
 {
-    return SerializeHash(*this);
+    return SerializeHashS(*this);
 }
 
 std::string CMutableTransaction::ToString() const
@@ -110,7 +112,7 @@ std::string CMutableTransaction::ToString() const
 
 void CTransaction::UpdateHash() const
 {
-    *const_cast<uint256*>(&hash) = SerializeHash(*this);
+    *const_cast<uint256*>(&hash) = SerializeHashS(*this);
 }
 
 CTransaction::CTransaction() : hash(), nVersion(CTransaction::CURRENT_VERSION), vin(), vout(), nLockTime(0) { }
@@ -133,7 +135,7 @@ CAmount CTransaction::GetValueOut() const
     CAmount nValueOut = 0;
     for (std::vector<CTxOut>::const_iterator it(vout.begin()); it != vout.end(); ++it)
     {
-        // PIVX: previously MoneyRange() was called here. This has been replaced with negative check and boundary wrap check.
+        // ProjectCoin: previously MoneyRange() was called here. This has been replaced with negative check and boundary wrap check.
         if (it->nValue < 0)
             throw std::runtime_error("CTransaction::GetValueOut() : value out of range : less than 0");
 
@@ -143,6 +145,15 @@ CAmount CTransaction::GetValueOut() const
         nValueOut += it->nValue;
     }
     return nValueOut;
+}
+
+std::list<COutPoint> CTransaction::GetOutPoints() const
+{
+    std::list<COutPoint> listOutPoints;
+    uint256 txHash = GetHash();
+    for (unsigned int i = 0; i < vout.size(); i++)
+        listOutPoints.emplace_back(COutPoint(txHash, i));
+    return listOutPoints;
 }
 
 double CTransaction::ComputePriority(double dPriorityInputs, unsigned int nTxSize) const

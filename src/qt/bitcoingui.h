@@ -1,4 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -6,7 +9,7 @@
 #define BITCOIN_QT_BITCOINGUI_H
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "amount.h"
@@ -18,7 +21,7 @@
 #include <QPoint>
 #include <QPushButton>
 #include <QSystemTrayIcon>
-//
+
 
 class ClientModel;
 class NetworkStyle;
@@ -83,9 +86,8 @@ private:
     WalletFrame* walletFrame;
 
     UnitDisplayStatusBarControl* unitDisplayControl;
-    QLabel* labelSIERRAIcon;
     QLabel* labelStakingIcon;
-    QLabel* labelEncryptionIcon;
+    QPushButton* labelEncryptionIcon;
     QPushButton* labelConnectionsIcon;
     QLabel* labelBlocksIcon;
     QLabel* progressBarLabel;
@@ -94,8 +96,6 @@ private:
 
     QMenuBar* appMenuBar;
     QAction* overviewAction;
-	////AAAA
-    //QAction* coinmixAction;
     QAction* historyAction;
     QAction* masternodeAction;
     QAction* quitAction;
@@ -105,6 +105,9 @@ private:
     QAction* signMessageAction;
     QAction* verifyMessageAction;
     QAction* bip38ToolAction;
+    QAction* multisigCreateAction;
+    QAction* multisigSpendAction;
+    QAction* multisigSignAction;
     QAction* aboutAction;
     QAction* receiveCoinsAction;
     QAction* optionsAction;
@@ -114,7 +117,6 @@ private:
     QAction* changePassphraseAction;
     QAction* unlockWalletAction;
     QAction* lockWalletAction;
-    QAction* lockWalletAction2;
     QAction* aboutQtAction;
     QAction* openInfoAction;
     QAction* openRPCConsoleAction;
@@ -128,23 +130,25 @@ private:
     QAction* openBlockExplorerAction;
     QAction* showHelpMessageAction;
     QAction* multiSendAction;
+    QAction* toolsAction;
+
 
     QSystemTrayIcon* trayIcon;
     QMenu* trayIconMenu;
     Notificator* notificator;
     RPCConsole* rpcConsole;
-    BlockExplorer* explorerWindow;
 
     /** Keep track of previous number of blocks, to detect progress */
     int prevBlocks;
     int spinnerFrame;
+    QTimer* synctimer;
 
     /** Create the main UI actions. */
     void createActions(const NetworkStyle* networkStyle);
     /** Create the menu bar and sub-menus. */
     void createMenuBar();
     /** Create the toolbars */
-    void createToolBars();
+    void createToolBars(QWidget *);
     /** Create system tray icon and notification */
     void createTrayIcon(const NetworkStyle* networkStyle);
     /** Create system tray menu (or setup the dock menu) */
@@ -171,6 +175,8 @@ public slots:
     void setNumBlocks(int count);
     /** Get restart command-line parameters and request restart */
     void handleRestart(QStringList args);
+    //update sync anim
+    void updateSyncAnimation();
 
     /** Notify the user of an event from the core network or transaction handling code.
        @param[in] title     the message box / notification title
@@ -200,15 +206,14 @@ private slots:
 #ifdef ENABLE_WALLET
     /** Switch to overview (home) page */
     void gotoOverviewPage();
-	//AAAA
-	/** Switch to coinmix (home) page */
-    //void gotocoinmixPage();
     /** Switch to history (transactions) page */
     void gotoHistoryPage();
     /** Switch to Explorer Page */
     void gotoBlockExplorerPage();
     /** Switch to masternode page */
     void gotoMasternodePage();
+    /** Switch to tools page */
+    void gotoToolsPage();
     /** Switch to receive coins page */
     void gotoReceiveCoinsPage();
     /** Switch to send coins page */
@@ -220,7 +225,10 @@ private slots:
     void gotoVerifyMessageTab(QString addr = "");
     /** Show MultiSend Dialog */
     void gotoMultiSendDialog();
-
+    /** Show MultiSig Dialog */
+    void gotoMultisigCreate();
+    void gotoMultisigSpend();
+    void gotoMultisigSign();
     /** Show BIP 38 tool - default to Encryption tab */
     void gotoBip38Tool();
 
@@ -238,6 +246,12 @@ private slots:
     /** Handle tray icon clicked */
     void trayIconActivated(QSystemTrayIcon::ActivationReason reason);
 #endif
+
+    void showInfo();
+    void showConsole();
+    void showGraph();
+    void showPeers();
+    void showRepair();
 
     /** Show window if hidden, unminimize when minimized, rise when obscured or show if hidden and fToggleHidden is true */
     void showNormalIfMinimized(bool fToggleHidden = false);

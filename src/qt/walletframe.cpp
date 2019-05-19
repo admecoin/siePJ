@@ -1,8 +1,12 @@
-// Copyright (c) 2011-2013 The Bitcoin developers
+// Copyright (c) 2011-2014 The Bitcoin developers
+// Copyright (c) 2014-2015 The Dash developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-//
+
 #include "walletframe.h"
+#include "toolspage.h"
 
 #include "bitcoingui.h"
 #include "walletview.h"
@@ -111,15 +115,6 @@ void WalletFrame::gotoOverviewPage()
         i.value()->gotoOverviewPage();
 }
 
-// AAAA
-
-void WalletFrame::gotocoinmixPage()
-{
-    QMap<QString, WalletView*>::const_iterator i;
-    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
-        i.value()->gotocoinmixPage();
-}
-
 void WalletFrame::gotoHistoryPage()
 {
     QMap<QString, WalletView*>::const_iterator i;
@@ -133,6 +128,22 @@ void WalletFrame::gotoMasternodePage() // Masternode list
     for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
         i.value()->gotoMasternodePage();
 }
+
+void WalletFrame::gotoToolsPage()
+{
+   QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+        i.value()->gotoToolsPage();
+}
+
+
+void WalletFrame::gotoToolsPageTab(enum ToolsPage::TabTypes page)
+{
+   QMap<QString, WalletView*>::const_iterator i;
+    for (i = mapWalletViews.constBegin(); i != mapWalletViews.constEnd(); ++i)
+        i.value()->gotoToolsPageTab(page);
+}
+
 
 void WalletFrame::gotoBlockExplorerPage()
 {
@@ -184,6 +195,13 @@ void WalletFrame::gotoMultiSendDialog()
         walletView->gotoMultiSendDialog();
 }
 
+void WalletFrame::gotoMultisigDialog(int index)
+{
+    WalletView* walletView = currentWalletView();
+    if(walletView){
+        walletView->gotoMultisigDialog(index);
+    }
+}
 
 void WalletFrame::encryptWallet(bool status)
 {

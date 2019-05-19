@@ -1,5 +1,6 @@
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2013 The Bitcoin developers
+// Copyright (c) 2015-2017 The PIVX developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -25,7 +26,7 @@ class CBlockHeader
 {
 public:
     // header
-    static const int32_t CURRENT_VERSION=3;
+    static const int32_t CURRENT_VERSION = 2;
     int32_t nVersion;
     uint256 hashPrevBlock;
     uint256 hashMerkleRoot;
@@ -105,8 +106,8 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action, int nType, int nVersion) {
         READWRITE(*(CBlockHeader*)this);
         READWRITE(vtx);
-	if(vtx.size() > 1 && vtx[1].IsCoinStake())
-		READWRITE(vchBlockSig);
+        if(vtx.size() > 1 && vtx[1].IsCoinStake())
+            READWRITE(vchBlockSig);
     }
 
     void SetNull()

@@ -1,8 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2017-2018 The PRJ Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -21,18 +20,18 @@ BitcoinUnits::BitcoinUnits(QObject* parent) : QAbstractListModel(parent),
 QList<BitcoinUnits::Unit> BitcoinUnits::availableUnits()
 {
     QList<BitcoinUnits::Unit> unitlist;
-    unitlist.append(SIERRA);
-    unitlist.append(mSIERRA);
-    unitlist.append(uSIERRA);
+    unitlist.append(PRJ);
+   // unitlist.append(mPRJ);
+   // unitlist.append(uPRJ);
     return unitlist;
 }
 
 bool BitcoinUnits::valid(int unit)
 {
     switch (unit) {
-    case SIERRA:
-    case mSIERRA:
-    case uSIERRA:
+    case PRJ:
+    case mPRJ:
+    case uPRJ:
         return true;
     default:
         return false;
@@ -42,12 +41,12 @@ bool BitcoinUnits::valid(int unit)
 QString BitcoinUnits::id(int unit)
 {
     switch (unit) {
-    case SIERRA:
-        return QString("SIERRA");
-    case mSIERRA:
-        return QString("mSIERRA");
-    case uSIERRA:
-        return QString::fromUtf8("uSIERRA");
+    case PRJ:
+        return QString("prj");
+    case mPRJ:
+        return QString("mprj");
+    case uPRJ:
+        return QString::fromUtf8("uprj");
     default:
         return QString("???");
     }
@@ -57,23 +56,23 @@ QString BitcoinUnits::name(int unit)
 {
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         switch (unit) {
-        case SIERRA:
-            return QString("SIERRA");
-        case mSIERRA:
-            return QString("mSIERRA");
-        case uSIERRA:
-            return QString::fromUtf8("μSIERRA");
+        case PRJ:
+            return QString("PRJ");
+        case mPRJ:
+            return QString("PRJ");
+        case uPRJ:
+            return QString::fromUtf8("μPRJ");
         default:
             return QString("???");
         }
     } else {
         switch (unit) {
-        case SIERRA:
-            return QString("tSIERRA");
-        case mSIERRA:
-            return QString("mtSIERRA");
-        case uSIERRA:
-            return QString::fromUtf8("μtSIERRA");
+        case PRJ:
+            return QString("tPRJ");
+        case mPRJ:
+            return QString("mPRJ");
+        case uPRJ:
+            return QString::fromUtf8("μtPRJ");
         default:
             return QString("???");
         }
@@ -84,23 +83,23 @@ QString BitcoinUnits::description(int unit)
 {
     if (Params().NetworkID() == CBaseChainParams::MAIN) {
         switch (unit) {
-        case SIERRA:
-            return QString("SIERRA");
-        case mSIERRA:
-            return QString("Milli-SIERRA (1 / 1" THIN_SP_UTF8 "000)");
-        case uSIERRA:
-            return QString("Micro-SIERRA (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
+        case PRJ:
+            return QString("PRJ");
+        case mPRJ:
+            return QString("Milli-PRJ (1 / 1" THIN_SP_UTF8 "000)");
+        case uPRJ:
+            return QString("Micro-PRJ (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
         default:
             return QString("???");
         }
     } else {
         switch (unit) {
-        case SIERRA:
-            return QString("TestSIERRAs");
-        case mSIERRA:
-            return QString("Milli-TestSIERRA (1 / 1" THIN_SP_UTF8 "000)");
-        case uSIERRA:
-            return QString("Micro-TestSIERRA (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
+        case PRJ:
+            return QString("TestPRJs");
+        case mPRJ:
+            return QString("Milli-TestPRJs (1 / 1" THIN_SP_UTF8 "000)");
+        case uPRJ:
+            return QString("Micro-TestPRJs (1 / 1" THIN_SP_UTF8 "000" THIN_SP_UTF8 "000)");
         default:
             return QString("???");
         }
@@ -110,11 +109,11 @@ QString BitcoinUnits::description(int unit)
 qint64 BitcoinUnits::factor(int unit)
 {
     switch (unit) {
-    case SIERRA:
+    case PRJ:
         return 100000000;
-    case mSIERRA:
+    case mPRJ:
         return 100000;
-    case uSIERRA:
+    case uPRJ:
         return 100;
     default:
         return 100000000;
@@ -124,11 +123,11 @@ qint64 BitcoinUnits::factor(int unit)
 int BitcoinUnits::decimals(int unit)
 {
     switch (unit) {
-    case SIERRA:
+    case PRJ:
         return 8;
-    case mSIERRA:
+    case mPRJ:
         return 5;
-    case uSIERRA:
+    case uPRJ:
         return 2;
     default:
         return 0;
@@ -214,6 +213,15 @@ QString BitcoinUnits::floorHtmlWithUnit(int unit, const CAmount& amount, bool pl
     str.replace(QChar(THIN_SP_CP), QString(THIN_SP_HTML));
     return QString("<span style='white-space: nowrap;'>%1</span>").arg(str);
 }
+
+QString BitcoinUnits::floorHtmlWithoutUnit(int unit, const CAmount& amount, bool plussign, SeparatorStyle separators)
+{
+    QString str(floorWithUnit(unit, amount, plussign, separators));
+    str.replace(QChar(THIN_SP_CP), QString(THIN_SP_HTML));
+    str.replace(name(unit),"");
+    return QString("<span style='white-space: nowrap;'>%1</span>").arg(str);
+}
+
 
 bool BitcoinUnits::parse(int unit, const QString& value, CAmount* val_out)
 {

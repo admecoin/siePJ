@@ -1,13 +1,11 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2017-2018 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #if defined(HAVE_CONFIG_H)
-#include "config/sierra-config.h"
+#include "config/projectcoin-config.h"
 #endif
 
 #include "util.h"
@@ -38,7 +36,7 @@ int main(int argc, char *argv[])
     // Don't remove this, it's needed to access
     // QCoreApplication:: in the tests
     QCoreApplication app(argc, argv);
-    app.setApplicationName("Sierra-Qt-test");
+    app.setApplicationName("ProjectCoin-Qt-test");
 
     URITests test1;
     if (QTest::qExec(&test1) != 0)

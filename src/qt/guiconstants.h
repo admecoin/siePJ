@@ -1,8 +1,7 @@
 // Copyright (c) 2011-2014 The Bitcoin developers
 // Copyright (c) 2014-2015 The Dash developers
-// Copyright (c) 2015-2017 The PIVX developers 
-// Copyright (c) 2015-2017 The ALQO developers
-// Copyright (c) 2015-2017 The Sierra developers
+// Copyright (c) 2015-2017 The PIVX developers
+// Copyright (c) 2018-2019 The ProjectCoin Core developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
@@ -15,8 +14,8 @@ static const int MODEL_UPDATE_DELAY = 250;
 /* AskPassphraseDialog -- Maximum passphrase length */
 static const int MAX_PASSPHRASE_SIZE = 1024;
 
-/* Sierra GUI -- Size of icons in status bar */
-static const int STATUSBAR_ICONSIZE = 16;
+/* ProjectCoin GUI -- Size of icons in status bar */
+static const int STATUSBAR_ICONSIZE = 32;
 
 static const bool DEFAULT_SPLASHSCREEN = true;
 
@@ -39,7 +38,7 @@ static const bool DEFAULT_SPLASHSCREEN = true;
 /* Tooltips longer than this (in characters) are converted into rich text,
    so that they can be word-wrapped.
  */
-static const int TOOLTIP_WRAP_THRESHOLD = 80;
+static const int TOOLTIP_WRAP_THRESHOLD = 30;
 
 /* Maximum allowed URI length */
 static const int MAX_URI_LENGTH = 255;
@@ -48,11 +47,11 @@ static const int MAX_URI_LENGTH = 255;
 #define EXPORT_IMAGE_SIZE 256
 
 /* Number of frames in spinner animation */
-#define SPINNER_FRAMES 35
+#define SPINNER_FRAMES 30
 
-#define QAPP_ORG_NAME "Sierra"
-#define QAPP_ORG_DOMAIN "http://bit.sierras/"
-#define QAPP_APP_NAME_DEFAULT "Sierra-Qt"
-#define QAPP_APP_NAME_TESTNET "Sierra-Qt-testnet"
+#define QAPP_ORG_NAME "ProjectCoin"
+#define QAPP_ORG_DOMAIN "projectcoin.net"
+#define QAPP_APP_NAME_DEFAULT "ProjectCoin-Qt"
+#define QAPP_APP_NAME_TESTNET "ProjectCoin-Qt-testnet"
 
 #endif // BITCOIN_QT_GUICONSTANTS_H

@@ -50,8 +50,11 @@
       </property>
       <item>
        <widget class="QValidatedLineEdit" name="payTo">
+        <property name="focusPolicy">
+         <enum>Qt::StrongFocus</enum>
+        </property>
         <property name="toolTip">
-         <string>The Sierra address to send the payment to</string>
+         <string>The ProjectCoin address to send the payment to</string>
         </property>
        </widget>
       </item>
@@ -64,7 +67,7 @@
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="../sierra.qrc">
+         <iconset resource="../projectcoin.qrc">
           <normaloff>:/icons/address-book</normaloff>:/icons/address-book</iconset>
         </property>
         <property name="shortcut">
@@ -81,7 +84,7 @@
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="../sierra.qrc">
+         <iconset resource="../projectcoin.qrc">
           <normaloff>:/icons/editpaste</normaloff>:/icons/editpaste</iconset>
         </property>
         <property name="shortcut">
@@ -98,7 +101,7 @@
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="../sierra.qrc">
+         <iconset resource="../projectcoin.qrc">
           <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
         </property>
        </widget>
@@ -154,7 +157,7 @@
     <item row="3" column="1">
      <widget class="QLabel" name="messageTextLabel">
       <property name="toolTip">
-       <string>A message that was attached to the SIERRA:URI which will be stored with the transaction for your reference. Note: This message will not be sent over the Sierra network.</string>
+       <string>A message that was attached to the ProjectCoin: URI which will be stored with the transaction for your reference. Note: This message will not be sent over the ProjectCoin network.</string>
       </property>
       <property name="textFormat">
        <enum>Qt::PlainText</enum>
@@ -622,7 +625,7 @@
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="../sierra.qrc">
+         <iconset resource="../projectcoin.qrc">
           <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
         </property>
        </widget>
@@ -1158,7 +1161,7 @@
          <string/>
         </property>
         <property name="icon">
-         <iconset resource="../sierra.qrc">
+         <iconset resource="../projectcoin.qrc">
           <normaloff>:/icons/remove</normaloff>:/icons/remove</iconset>
         </property>
        </widget>
@@ -1215,6 +1218,7 @@
    <class>BitcoinAmountField</class>
    <extends>QLineEdit</extends>
    <header>bitcoinamountfield.h</header>
+   <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>
@@ -1230,7 +1234,7 @@
   <tabstop>deleteButton_s</tabstop>
  </tabstops>
  <resources>
-  <include location="../sierra.qrc"/>
+  <include location="../projectcoin.qrc"/>
  </resources>
  <connections/>
 </ui>
